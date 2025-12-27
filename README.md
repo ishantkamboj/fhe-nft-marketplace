@@ -35,12 +35,7 @@ A decentralized marketplace for trading NFT whitelist spots with **complete priv
   - Uses @zama-fhe/relayer-sdk
   - RESTful API for frontend
   - Public metadata storage
-
-- **Transaction Flow**
-  - MetaMask integration working
-  - Successfully creates listings on-chain
-  - Transaction confirmation handled
-
+  
 ### 🚧 In Progress
 
 - Frontend UI completion
@@ -48,7 +43,7 @@ A decentralized marketplace for trading NFT whitelist spots with **complete priv
 - Purchase flow
 - Decryption interface
 
-**Note:** Due to hackathon time constraints, frontend was not fully completed. Core FHE functionality and smart contract are production-ready.
+**Note:** Due to time constraints, frontend was not fully completed. Core FHE functionality and smart contract are production-ready.
 
 ## 🏗️ Architecture
 
@@ -95,7 +90,7 @@ npm >= 9.0.0
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/fhe-nft-marketplace
+git clone https://github.com/ishantkamboj/fhe-nft-marketplace
 cd fhe-nft-marketplace
 ```
 
@@ -108,8 +103,6 @@ cp .env.example .env
 # Add your RPC URL to .env
 npm run dev
 ```
-
-Backend runs at: http://localhost:3001
 
 ### 3. Contract Deployment (Already Deployed)
 
@@ -182,14 +175,6 @@ function getEncryptedData(uint256 listingId)
 4. **Escrow:** Automated payment holding
 5. **No Plaintext:** Zero sensitive data visible on-chain
 
-## 📈 Gas Usage
-
-| Operation | Gas Used |
-|-----------|----------|
-| Create Listing | ~9,000,000 |
-| Buy Listing | ~200,000 |
-| Decrypt Data | ~100,000 (view) |
-
 ## 🛠️ Tech Stack
 
 **Smart Contract:**
@@ -236,16 +221,6 @@ fhe-nft-marketplace/
 ├── README.md
 └── .gitignore
 ```
-
-## 🎥 Demo
-
-**What Works:**
-1. Backend encrypts 53 values ✅
-2. MetaMask transaction signing ✅
-3. On-chain listing creation ✅
-4. Contract deployed and verified ✅
-
-**Video:** [Link to demo video]
 
 ## 🔗 Links
 
