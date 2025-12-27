@@ -1,0 +1,50 @@
+# Node modules
+node_modules/
+*/node_modules/
+
+# Environment variables (NEVER COMMIT THESE!)
+.env
+.env.local
+.env.*.local
+*/.env
+*/.env.local
+
+# Private keys (CRITICAL - NEVER COMMIT!)
+*.key
+*.pem
+private-keys/
+secrets/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Database files
+db.json
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# Dependencies
+package-lock.json
+yarn.lock
