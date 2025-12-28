@@ -460,7 +460,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     })));
 
     const walletBytes: number[] = [];
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < encryptedWallet.length; i++) {
       const handle = encryptedWallet[i];
       const value = decryptionResult[handle];
       if (value === undefined) {
@@ -473,7 +473,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     console.log('✅ Wallet decrypted:', walletAddress);
 
     const keyBytes: number[] = [];
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < encryptedPrivateKey.length; i++) {
       const handle = encryptedPrivateKey[i];
       const value = decryptionResult[handle];
       if (value === undefined) {
