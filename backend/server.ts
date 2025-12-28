@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
+import { ethers } from 'ethers';
 
 dotenv.config();
 
@@ -269,6 +270,119 @@ app.post('/api/listings/:tempId/link', async (req, res) => {
 });
 
 /**
+ * 🔓 DECRYPT LISTING DATA
+ * Decrypts private key and wallet for buyers who purchased the listing
+ */
+app.post('/api/listings/:id/decrypt', async (req, res) => {
+  try {
+    const listingId = parseInt(req.params.id);
+    const { buyerAddress } = req.body;
+
+    if (!buyerAddress) {
+      return res.status(400).json({ error: 'Buyer address required' });
+    }
+
+    console.log(`🔓 Decryption request for listing ${listingId} from ${buyerAddress}`);
+
+    // Get listing from database
+    await db.read();
+    const listing = db.data.listings.find(
+      l => l.contractListingId === listingId
+    );
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found in database' });
+    }
+
+    // Create contract instance to verify buyer
+    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
+    const provider = new ethers.JsonRpcProvider(
+      process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
+    );
+
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      [
+        'function getListing(uint256) view returns (tuple(uint256 listingId, address seller, bytes32[20] encryptedSellerWallet, address buyer, string nftProject, uint256 quantity, bytes32 encryptedPrice, uint256 collateral, uint256 buyerPayment, bytes32[32] encryptedPrivateKey, bytes32 privateKeyHash, uint256 mintDate, uint256 confirmationDeadline, uint8 status, uint256 createdAt, uint256 soldAt, uint256 completedAt, bool hasCollateral, bool mintDateSet, bool underManualReview, string reviewNotes))',
+        'function getEncryptedData(uint256) view returns (bytes, bytes, bytes)'
+      ],
+      provider
+    );
+
+    console.log('📡 Checking on-chain listing data...');
+
+    // Verify caller is the actual buyer
+    const onChainListing = await contract.getListing(listingId);
+    const actualBuyer = onChainListing.buyer.toLowerCase();
+
+    if (actualBuyer !== buyerAddress.toLowerCase()) {
+      console.log(`❌ Unauthorized: Expected ${actualBuyer}, got ${buyerAddress}`);
+      return res.status(403).json({
+        error: 'Unauthorized: You are not the buyer of this listing'
+      });
+    }
+
+    if (actualBuyer === '0x0000000000000000000000000000000000000000') {
+      return res.status(400).json({
+        error: 'Listing not yet purchased'
+      });
+    }
+
+    console.log('✅ Buyer verified:', actualBuyer);
+
+    // Get encrypted data from contract
+    console.log('📥 Fetching encrypted data from contract...');
+    const [priceBytes, walletBytes, keyBytes] = await contract.getEncryptedData(listingId);
+
+    console.log('   Wallet bytes length:', walletBytes.length);
+    console.log('   Key bytes length:', keyBytes.length);
+
+    // Create FHE instance for decryption
+    console.log('🔐 Creating FHEVM instance for decryption...');
+    const fhevmInstance = await createInstance({
+      ...SepoliaConfig,
+      network: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
+    });
+
+    console.log('✅ FHEVM instance created');
+
+    // Decrypt wallet address
+    console.log('🔓 Decrypting wallet address...');
+    const decryptedWalletBytes = await fhevmInstance.decrypt(
+      CONTRACT_ADDRESS,
+      walletBytes
+    );
+    const walletAddress = '0x' + Buffer.from(decryptedWalletBytes).toString('hex');
+
+    console.log('✅ Wallet decrypted:', walletAddress);
+
+    // Decrypt private key
+    console.log('🔓 Decrypting private key...');
+    const decryptedKeyBytes = await fhevmInstance.decrypt(
+      CONTRACT_ADDRESS,
+      keyBytes
+    );
+    const privateKey = '0x' + Buffer.from(decryptedKeyBytes).toString('hex');
+
+    console.log('✅ Private key decrypted (length):', privateKey.length);
+
+    res.json({
+      success: true,
+      walletAddress,
+      privateKey,
+      listingId
+    });
+
+  } catch (error: any) {
+    console.error('❌ Decryption error:', error);
+    res.status(500).json({
+      error: 'Decryption failed',
+      message: error.message
+    });
+  }
+});
+
+/**
  * ❤️ HEALTH CHECK
  */
 app.get('/api/health', (req, res) => {
@@ -293,6 +407,7 @@ app.listen(PORT, () => {
   console.log('   GET  /api/listings - Get all public listings');
   console.log('   GET  /api/listings/:id - Get single listing');
   console.log('   POST /api/listings/:id/link - Link temp to contract ID');
+  console.log('   POST /api/listings/:id/decrypt - Decrypt data for buyer');
   console.log('   GET  /api/health - Health check');
   console.log('\n🔐 Encryption:');
   console.log('   - 1 euint64 (price)');
