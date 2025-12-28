@@ -245,20 +245,8 @@ export default function CreateListingPage() {
         
         console.log('✅ writeContract returned:', result);
         console.log('   Type:', typeof result);
-        console.log('⏳ Waiting for MetaMask popup...');
-        
-        // Check if wallet is still connected
-        setTimeout(() => {
-          if (!hash && !isPending) {
-            console.error('❌ No transaction hash after 5 seconds!');
-            console.error('   isPending:', isPending);
-            console.error('   hash:', hash);
-            console.error('   This usually means MetaMask rejected silently');
-            alert('⚠️ Transaction not started! Check:\n1. Is MetaMask unlocked?\n2. Are you on Sepolia network?\n3. Do you have enough ETH?');
-            setIsEncrypting(false);
-          }
-        }, 5000);
-        
+        console.log('⏳ Waiting for MetaMask confirmation...');
+
       } catch (writeError: any) {
         console.error('❌ writeContract threw error:', writeError);
         console.error('Error name:', writeError?.name);
