@@ -452,22 +452,37 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     // Extract decrypted values from result
     // userDecrypt returns Record<handle, value>
+    console.log('🔍 Decryption result keys:', Object.keys(decryptionResult).length);
+    console.log('🔍 First 3 wallet handles:', encryptedWallet.slice(0, 3));
+    console.log('🔍 First 3 decrypted values:', encryptedWallet.slice(0, 3).map((h: string) => ({
+      handle: h,
+      value: decryptionResult[h]?.toString() || 'undefined'
+    })));
+
     const walletBytes: number[] = [];
     for (let i = 0; i < 20; i++) {
       const handle = encryptedWallet[i];
       const value = decryptionResult[handle];
+      if (value === undefined) {
+        console.error(`❌ Missing value for wallet handle ${i}: ${handle}`);
+      }
       walletBytes.push(Number(value));
     }
     const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('✅ Wallet bytes:', walletBytes.slice(0, 5), '...');
     console.log('✅ Wallet decrypted:', walletAddress);
 
     const keyBytes: number[] = [];
     for (let i = 0; i < 32; i++) {
       const handle = encryptedPrivateKey[i];
       const value = decryptionResult[handle];
+      if (value === undefined) {
+        console.error(`❌ Missing value for key handle ${i}: ${handle}`);
+      }
       keyBytes.push(Number(value));
     }
     const privateKeyHex = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('✅ Private key bytes:', keyBytes.slice(0, 5), '...');
     console.log('✅ Private key decrypted (length):', privateKeyHex.length);
 
     res.json({
