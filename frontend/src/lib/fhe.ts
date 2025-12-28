@@ -49,52 +49,39 @@ export async function decryptListingData(
     console.log('👤 User address:', userAddress);
     console.log('📝 Listing ID:', listingId.toString());
 
+    // Get contract instance
+    const contract = new Contract(contractAddress, CONTRACT_ABI, signer);
+
+    // Get encrypted data from contract
+    console.log('📥 Fetching encrypted data from contract...');
+    const [priceBytes, walletBytes, keyBytes] = await contract.getEncryptedData(listingId);
+
+    console.log('Encrypted wallet bytes length:', walletBytes.length);
+    console.log('Encrypted key bytes length:', keyBytes.length);
+
     // Generate EIP-712 signature for decryption permission
     const { publicKey, signature } = await instance.generateToken({
       verifyingContract: contractAddress,
     });
 
-    instance.setSignature(contractAddress, signature);
     console.log('✅ Decryption signature generated');
 
-    // Get contract instance
-    const contract = new Contract(contractAddress, CONTRACT_ABI, signer);
-
-    console.log('🔓 Decrypting wallet address (20 bytes)...');
-    const walletBytes: number[] = [];
-    for (let i = 0; i < 20; i++) {
-      // Each encryptedWallet[i] is a euint8 ciphertext handle
-      const ciphertext = encryptedWallet[i];
-      const decrypted = await instance.reencrypt(
-        ciphertext,
-        contractAddress,
-        publicKey,
-        signature,
-        signer
-      );
-      walletBytes.push(decrypted);
-    }
-
-    // Convert bytes to address
-    const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Decrypt wallet address
+    console.log('🔓 Decrypting wallet address...');
+    const decryptedWallet = await instance.decrypt(
+      contractAddress,
+      walletBytes
+    );
+    const walletAddress = '0x' + Buffer.from(decryptedWallet).toString('hex');
     console.log('✅ Wallet decrypted:', walletAddress);
 
-    console.log('🔓 Decrypting private key (32 bytes)...');
-    const keyBytes: number[] = [];
-    for (let i = 0; i < 32; i++) {
-      const ciphertext = encryptedPrivateKey[i];
-      const decrypted = await instance.reencrypt(
-        ciphertext,
-        contractAddress,
-        publicKey,
-        signature,
-        signer
-      );
-      keyBytes.push(decrypted);
-    }
-
-    // Convert bytes to private key
-    const privateKey = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Decrypt private key
+    console.log('🔓 Decrypting private key...');
+    const decryptedKey = await instance.decrypt(
+      contractAddress,
+      keyBytes
+    );
+    const privateKey = '0x' + Buffer.from(decryptedKey).toString('hex');
     console.log('✅ Private key decrypted (length):', privateKey.length);
 
     return {
