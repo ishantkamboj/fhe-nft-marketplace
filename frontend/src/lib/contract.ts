@@ -101,6 +101,13 @@ export const CONTRACT_ABI = [
       { "name": "privateKey", "type": "bytes" }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "listingCount",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
   }
 ] as const;
 
