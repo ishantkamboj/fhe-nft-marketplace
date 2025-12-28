@@ -14,9 +14,29 @@ export default function HomePage() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [lastFetch, setLastFetch] = useState<number>(0);
+
+  // Cache duration: 30 seconds
+  const CACHE_DURATION = 30000;
 
   // Fetch listings from backend
   useEffect(() => {
+    // Check cache first
+    const cachedData = localStorage.getItem('listings_cache');
+    const cachedTime = localStorage.getItem('listings_cache_time');
+
+    if (cachedData && cachedTime) {
+      const age = Date.now() - parseInt(cachedTime);
+      if (age < CACHE_DURATION) {
+        // Use cached data
+        setListings(JSON.parse(cachedData));
+        setLoading(false);
+        setLastFetch(parseInt(cachedTime));
+        return;
+      }
+    }
+
+    // Cache expired or doesn't exist - fetch fresh data
     fetchListings();
   }, []);
 
@@ -73,12 +93,24 @@ export default function HomePage() {
       // Filter out null entries (failed fetches)
       const validListings = allListings.filter((l) => l !== null);
       setListings(validListings);
+
+      // Cache the results
+      const now = Date.now();
+      localStorage.setItem('listings_cache', JSON.stringify(validListings));
+      localStorage.setItem('listings_cache_time', now.toString());
+      setLastFetch(now);
     } catch (error: any) {
       console.error('Failed to fetch listings from contract:', error);
       setError(`Failed to load listings: ${error.message || 'Network error'}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    setLoading(true);
+    fetchListings();
   };
 
   // Filter listings by search term
@@ -120,13 +152,29 @@ export default function HomePage() {
 
       {/* Search Bar */}
       <div className="max-w-2xl mx-auto">
-        <input
-          type="text"
-          placeholder="Search NFT projects..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-6 py-4 rounded-lg bg-gray-800 text-white border border-gray-700 focus:border-primary focus:outline-none"
-        />
+        <div className="flex gap-3">
+          <input
+            type="text"
+            placeholder="Search NFT projects..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-6 py-4 rounded-lg bg-gray-800 text-white border border-gray-700 focus:border-primary focus:outline-none"
+          />
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="px-6 py-4 rounded-lg bg-gray-800 text-white border border-gray-700 hover:border-primary hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh listings"
+          >
+            🔄
+          </button>
+        </div>
+        {lastFetch > 0 && (
+          <p className="text-gray-500 text-sm mt-2 text-center">
+            Last updated: {new Date(lastFetch).toLocaleTimeString()}
+            {Date.now() - lastFetch > CACHE_DURATION && ' (cached)'}
+          </p>
+        )}
       </div>
 
       {/* Stats */}
