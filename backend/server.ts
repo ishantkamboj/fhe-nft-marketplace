@@ -270,6 +270,85 @@ app.post('/api/listings/:tempId/link', async (req, res) => {
 });
 
 /**
+ * 🔑 PREPARE DECRYPTION
+ * Generates keypair and EIP712 signature structure for user to sign
+ */
+app.post('/api/listings/:id/prepare-decrypt', async (req, res) => {
+  try {
+    const listingId = parseInt(req.params.id);
+    const { buyerAddress, encryptedWallet, encryptedPrivateKey, contractAddress } = req.body;
+
+    if (!buyerAddress || !encryptedWallet || !encryptedPrivateKey) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    console.log(`🔑 Preparing decryption signature for listing ${listingId}`);
+
+    // Verify the buyer actually owns this listing on-chain
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
+    const provider = new ethers.JsonRpcProvider(
+      process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
+    );
+
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      [
+        'function getListing(uint256) view returns (tuple(uint256 listingId, address seller, bytes32[20] encryptedSellerWallet, address buyer, string nftProject, uint256 quantity, bytes32 encryptedPrice, uint256 collateral, uint256 buyerPayment, bytes32[32] encryptedPrivateKey, bytes32 privateKeyHash, uint256 mintDate, uint256 confirmationDeadline, uint8 status, uint256 createdAt, uint256 soldAt, uint256 completedAt, bool hasCollateral, bool mintDateSet, bool underManualReview, string reviewNotes))'
+      ],
+      provider
+    );
+
+    const onChainListing = await contract.getListing(listingId);
+    const actualBuyer = onChainListing.buyer.toLowerCase();
+
+    if (actualBuyer !== buyerAddress.toLowerCase()) {
+      return res.status(403).json({ error: 'Unauthorized: You are not the buyer of this listing' });
+    }
+
+    console.log('✅ Buyer verified:', actualBuyer);
+
+    // Create FHEVM instance
+    const fhevmInstance = await createInstance({
+      ...SepoliaConfig,
+      network: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
+    });
+
+    // Generate keypair for decryption
+    const { publicKey, privateKey } = fhevmInstance.generateKeypair();
+    console.log('✅ Keypair generated');
+
+    // Create EIP712 structure for decryption permission
+    const startTimestamp = Math.floor(Date.now() / 1000);
+    const durationDays = 1; // Permission valid for 1 day
+
+    const eip712 = fhevmInstance.createEIP712(
+      publicKey,
+      [CONTRACT_ADDRESS],
+      startTimestamp,
+      durationDays
+    );
+
+    console.log('✅ EIP712 structure created');
+
+    // Return signature parameters to frontend
+    res.json({
+      eip712,
+      publicKey,
+      privateKey,
+      startTimestamp,
+      durationDays
+    });
+
+  } catch (error: any) {
+    console.error('❌ Prepare decryption error:', error);
+    res.status(500).json({
+      error: 'Failed to prepare decryption',
+      message: error.message
+    });
+  }
+});
+
+/**
  * 🔓 DECRYPT LISTING DATA
  * Decrypts private key and wallet for buyers who purchased the listing
  */

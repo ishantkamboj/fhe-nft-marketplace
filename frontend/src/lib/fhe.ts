@@ -1,15 +1,13 @@
 import { BrowserProvider, Contract } from 'ethers';
-import { createInstance } from 'fhevmjs/web';
 import { CONTRACT_ABI } from './contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 /**
  * Decrypt listing data using user signature
- * 1. Generate FHE keypair for decryption
- * 2. Create EIP712 permission structure
- * 3. User signs permission
- * 4. Backend uses signature to decrypt via KMS Gateway
+ * Two-step process:
+ * 1. Get signature params from backend (generates keypair & EIP712)
+ * 2. User signs, send back to backend for decryption
  */
 export async function decryptListingData(
   contractAddress: string,
@@ -38,32 +36,30 @@ export async function decryptListingData(
     console.log('   Wallet handles:', walletHandles.length);
     console.log('   Key handles:', keyHandles.length);
 
-    // Create FHE instance to generate keypair and EIP712
-    console.log('🔑 Creating FHE instance for signature...');
-    const fhevmInstance = await createInstance({
-      chainId: 8009,
-      networkUrl: 'https://devnet.zama.ai',
-      gatewayUrl: 'https://gateway.devnet.zama.ai',
+    // Step 1: Request signature parameters from backend
+    console.log('🔑 Requesting signature parameters from backend...');
+    const prepareResponse = await fetch(`${BACKEND_URL}/api/listings/${listingId}/prepare-decrypt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        buyerAddress,
+        encryptedWallet: walletHandles,
+        encryptedPrivateKey: keyHandles,
+        contractAddress
+      }),
     });
 
-    // Generate keypair for decryption
-    const { publicKey, privateKey } = fhevmInstance.generateKeypair();
-    console.log('✅ Keypair generated');
+    if (!prepareResponse.ok) {
+      const error = await prepareResponse.json();
+      throw new Error(error.message || error.error || 'Failed to prepare decryption');
+    }
 
-    // Create EIP712 structure for decryption permission
-    const startTimestamp = Math.floor(Date.now() / 1000);
-    const durationDays = 1; // Permission valid for 1 day
+    const { eip712, publicKey, privateKey: fhePrivateKey, startTimestamp, durationDays } = await prepareResponse.json();
 
-    const eip712 = fhevmInstance.createEIP712(
-      publicKey,
-      contractAddress,
-      startTimestamp,
-      durationDays
-    );
+    console.log('✅ Got signature parameters');
+    console.log('📝 Requesting user signature...');
 
-    console.log('📝 Requesting signature for decryption permission...');
-
-    // Ask user to sign the EIP712 message
+    // Step 2: Ask user to sign the EIP712 message
     const signature = await signer.signTypedData(
       eip712.domain,
       eip712.types,
@@ -72,9 +68,9 @@ export async function decryptListingData(
 
     console.log('✅ Signature obtained');
 
-    // Send to backend for decryption
-    console.log('📤 Sending to backend for decryption...');
-    const response = await fetch(`${BACKEND_URL}/api/listings/${listingId}/decrypt`, {
+    // Step 3: Send signature back to backend for decryption
+    console.log('📤 Sending signature to backend for decryption...');
+    const decryptResponse = await fetch(`${BACKEND_URL}/api/listings/${listingId}/decrypt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -82,7 +78,7 @@ export async function decryptListingData(
         encryptedWallet: walletHandles,
         encryptedPrivateKey: keyHandles,
         publicKey,
-        privateKey,
+        privateKey: fhePrivateKey,
         signature,
         startTimestamp,
         durationDays,
@@ -90,12 +86,12 @@ export async function decryptListingData(
       }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
+    if (!decryptResponse.ok) {
+      const error = await decryptResponse.json();
       throw new Error(error.message || error.error || 'Decryption failed');
     }
 
-    const data = await response.json();
+    const data = await decryptResponse.json();
 
     console.log('✅ Decryption successful!');
     console.log('   Wallet:', data.walletAddress);
@@ -111,3 +107,4 @@ export async function decryptListingData(
     throw new Error(`Failed to decrypt: ${error.message}`);
   }
 }
+
