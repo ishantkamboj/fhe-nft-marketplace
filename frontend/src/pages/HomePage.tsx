@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import ListingCard from '@/components/ListingCard';
 import { Link } from 'react-router-dom';
-import { BrowserProvider, Contract } from 'ethers';
+import { JsonRpcProvider, Contract } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com';
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -43,7 +44,7 @@ export default function HomePage() {
 
       // Fetch contract data to get status for each on-chain listing
       try {
-        const provider = new BrowserProvider(window.ethereum);
+        const provider = new JsonRpcProvider(RPC_URL);
         const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
         const enrichedListings = await Promise.all(
