@@ -164,9 +164,10 @@ export default function CreateListingPage() {
         throw new Error('Backend encryption failed');
       }
 
-      const { encrypted, publicData } = await response.json();
+      const { encrypted, publicData, priceInGwei } = await response.json();
       console.log('✅ Encryption successful!', publicData);
       console.log('📦 Encrypted data:', encrypted);
+      console.log('💰 Price in Gwei:', priceInGwei);
 
       setTempListingId(publicData.id);
 
@@ -174,7 +175,7 @@ export default function CreateListingPage() {
       const handleToBytes32 = (handleObj: any): string => {
         // If already a string, return it
         if (typeof handleObj === 'string') return handleObj;
-        
+
         // Convert object with numeric keys to Uint8Array then hex
         const bytes = new Uint8Array(32);
         for (let i = 0; i < 32; i++) {
@@ -183,8 +184,8 @@ export default function CreateListingPage() {
         // Use vanilla JS to convert to hex (no ethers dependency)
         return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
       };
-      
-      const priceHandle = handleToBytes32(encrypted.price);
+
+      // Price is now PUBLIC (not encrypted) - use the priceInGwei value
       const walletHandles = encrypted.wallet.map(handleToBytes32);
       const keyHandles = encrypted.privateKey.map(handleToBytes32);
       
@@ -193,7 +194,7 @@ export default function CreateListingPage() {
       const proof = '0x' + Array.from(proofBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
       console.log('🔧 Converted handles (using working format):');
-      console.log('  Price:', priceHandle.substring(0, 20) + '...');
+      console.log('  Price (public):', priceInGwei, 'Gwei');
       console.log('  Wallet handles:', walletHandles.length, 'x bytes32');
       console.log('  Key handles:', keyHandles.length, 'x bytes32');
       console.log('  Proof length:', proof.length, 'chars');
@@ -202,18 +203,18 @@ export default function CreateListingPage() {
       const args = [
         formData.nftProject,
         BigInt(formData.quantity),
-        priceHandle,
+        BigInt(priceInGwei),  // Price is now PUBLIC (uint256), not encrypted
         walletHandles,
         keyHandles,
         proof,
         parseEther(formData.collateral || '0'),
         BigInt(publicData.mintDate),
       ];
-      
+
       console.log('📋 Contract call arguments:');
       console.log('  [0] nftProject:', args[0]);
       console.log('  [1] quantity:', args[1].toString());
-      console.log('  [2] priceHandle:', args[2]);
+      console.log('  [2] priceInGwei:', args[2].toString());
       console.log('  [3] walletHandles length:', args[3].length);
       console.log('  [4] keyHandles length:', args[4].length);
       console.log('  [5] proof length:', args[5].length);
