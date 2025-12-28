@@ -187,12 +187,7 @@ export default function ListingDetailPage() {
 
     } catch (error: any) {
       console.error('Error decrypting data:', error);
-      setDecryptionError(
-        '⚠️ Browser-side FHE decryption is currently unavailable due to deprecated library (fhevmjs). ' +
-        'The marketplace uses Zama\'s FHE encryption to secure sensitive data. ' +
-        'The encrypted private key and wallet data are stored on-chain, and decryption requires upgrading to @zama-fhe/relayer-sdk. ' +
-        'You can still complete the purchase and confirm the mint status.'
-      );
+      setDecryptionError(error.message || 'Decryption failed. Please try again.');
     } finally {
       setIsDecrypting(false);
     }

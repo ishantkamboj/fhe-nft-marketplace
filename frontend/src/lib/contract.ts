@@ -96,9 +96,8 @@ export const CONTRACT_ABI = [
     "name": "getEncryptedData",
     "inputs": [{ "name": "listingId", "type": "uint256" }],
     "outputs": [
-      { "name": "price", "type": "bytes" },
-      { "name": "wallet", "type": "bytes" },
-      { "name": "privateKey", "type": "bytes" }
+      { "name": "wallet", "type": "bytes32[20]" },
+      { "name": "privateKey", "type": "bytes32[32]" }
     ],
     "stateMutability": "view"
   },
