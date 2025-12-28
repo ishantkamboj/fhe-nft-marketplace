@@ -92,8 +92,9 @@ export default function ListingDetailPage() {
     );
   }
 
-  const [
-    id,
+  // Destructure listing object (wagmi returns objects, not arrays)
+  const {
+    listingId: id,
     seller,
     encryptedSellerWallet,
     buyer,
@@ -114,7 +115,7 @@ export default function ListingDetailPage() {
     mintDateSet,
     underManualReview,
     reviewNotes
-  ] = listing as any;
+  } = listing as any;
 
   const isBuyer = buyer === address;
   const isSeller = seller === address;
