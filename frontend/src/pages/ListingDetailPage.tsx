@@ -63,6 +63,15 @@ export default function ListingDetailPage() {
     fetchBackendData();
   }, [listingId]);
 
+  // Refetch listing after successful transaction
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => {
+        refetch();
+      }, 2000);
+    }
+  }, [isSuccess, refetch]);
+
   console.log('📋 Listing data from contract:', listing);
   console.log('📋 Listing type:', typeof listing);
   console.log('📋 Is array?', Array.isArray(listing));
@@ -143,15 +152,6 @@ export default function ListingDetailPage() {
       value: parseEther(backendListing.price.toString()),
     });
   };
-
-  // Refetch listing after successful transaction
-  useEffect(() => {
-    if (isSuccess) {
-      setTimeout(() => {
-        refetch();
-      }, 2000);
-    }
-  }, [isSuccess, refetch]);
 
   const handleGetPrivateKey = async () => {
     if (!walletClient) {
