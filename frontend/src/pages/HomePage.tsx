@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import ListingCard from '@/components/ListingCard';
 import { Link } from 'react-router-dom';
-import { JsonRpcProvider, Contract } from 'ethers';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-const RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com';
 
 export default function HomePage() {
   const { isConnected } = useAccount();
@@ -44,63 +41,38 @@ export default function HomePage() {
     try {
       setError('');
 
-      // Fetch directly from contract instead of backend DB
-      const provider = new JsonRpcProvider(RPC_URL);
-      const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      // Sync listings from contract to backend DB
+      console.log('🔄 Syncing listings from contract...');
+      const syncResponse = await fetch(`${BACKEND_URL}/api/sync-listings`, {
+        method: 'POST',
+      });
 
-      // Get total number of listings
-      const listingCount = await contract.listingCount();
-      const count = Number(listingCount);
-
-      if (count === 0) {
-        setListings([]);
-        setLoading(false);
-        return;
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync listings from contract');
       }
 
-      // Fetch all listings from contract
-      const allListings = await Promise.all(
-        Array.from({ length: count }, (_, i) => i + 1).map(async (listingId) => {
-          try {
-            const listing = await contract.getListing(listingId);
-            return {
-              contractListingId: listingId,
-              listingId: Number(listing.listingId),
-              seller: listing.seller,
-              buyer: listing.buyer,
-              nftProject: listing.nftProject,
-              quantity: Number(listing.quantity),
-              price: Number(listing.price),
-              priceInGwei: Number(listing.price),
-              collateral: Number(listing.collateral),
-              buyerPayment: Number(listing.buyerPayment),
-              mintDate: Number(listing.mintDate),
-              status: Number(listing.status),
-              createdAt: Number(listing.createdAt),
-              soldAt: Number(listing.soldAt),
-              completedAt: Number(listing.completedAt),
-              hasCollateral: listing.hasCollateral,
-              mintDateSet: listing.mintDateSet,
-              onChain: true,
-            };
-          } catch (err) {
-            console.error(`Failed to fetch listing ${listingId}:`, err);
-            return null;
-          }
-        })
-      );
+      const syncData = await syncResponse.json();
+      console.log(`✅ Synced ${syncData.count} listings`);
 
-      // Filter out null entries (failed fetches)
-      const validListings = allListings.filter((l) => l !== null);
-      setListings(validListings);
+      // Fetch listings from backend DB (fast!)
+      const listingsResponse = await fetch(`${BACKEND_URL}/api/listings`);
+
+      if (!listingsResponse.ok) {
+        throw new Error('Failed to fetch listings from backend');
+      }
+
+      const listingsData = await listingsResponse.json();
+      const allListings = listingsData.listings || [];
+
+      setListings(allListings);
 
       // Cache the results
       const now = Date.now();
-      localStorage.setItem('listings_cache', JSON.stringify(validListings));
+      localStorage.setItem('listings_cache', JSON.stringify(allListings));
       localStorage.setItem('listings_cache_time', now.toString());
       setLastFetch(now);
     } catch (error: any) {
-      console.error('Failed to fetch listings from contract:', error);
+      console.error('Failed to fetch listings:', error);
       setError(`Failed to load listings: ${error.message || 'Network error'}`);
     } finally {
       setLoading(false);

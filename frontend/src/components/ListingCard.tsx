@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LISTING_STATUS } from '@/lib/contract';
 
 interface ListingCardProps {
   listing: any; // Backend listing object with public metadata
@@ -11,6 +12,40 @@ export default function ListingCard({ listing }: ListingCardProps) {
     return date.toLocaleDateString();
   };
 
+  // Convert Gwei to ETH
+  const formatPrice = (priceInGwei: number) => {
+    return (priceInGwei / 1e9).toFixed(4);
+  };
+
+  // Convert Wei to ETH
+  const formatEth = (wei: number) => {
+    return (wei / 1e18).toFixed(4);
+  };
+
+  // Get status info
+  const getStatusInfo = () => {
+    const status = listing.status ?? -1;
+    switch (status) {
+      case 0:
+        return { text: 'ACTIVE', color: 'green' };
+      case 1:
+        return { text: 'SOLD', color: 'blue' };
+      case 2:
+        return { text: 'COMPLETED', color: 'purple' };
+      case 3:
+        return { text: 'UNDER REVIEW', color: 'yellow' };
+      case 4:
+        return { text: 'DISPUTED', color: 'red' };
+      case 5:
+        return { text: 'CANCELLED', color: 'gray' };
+      default:
+        return listing.onChain
+          ? { text: 'ACTIVE', color: 'green' }
+          : { text: 'PENDING', color: 'yellow' };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
   const listingId = listing.contractListingId || listing.id;
 
   return (
@@ -32,7 +67,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <div className="flex items-center justify-between">
             <span className="text-primary text-sm">Price:</span>
             <span className="text-white font-bold text-xl">
-              {listing.price} ETH
+              {formatPrice(listing.price || listing.priceInGwei || 0)} ETH
             </span>
           </div>
         </div>
@@ -43,7 +78,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
             <div className="flex items-center justify-between">
               <span className="text-green-400 text-sm">✅ Collateral Locked</span>
               <span className="text-green-400 font-semibold">
-                {listing.collateral} ETH
+                {formatEth(listing.collateral)} ETH
               </span>
             </div>
           </div>
@@ -75,15 +110,9 @@ export default function ListingCard({ listing }: ListingCardProps) {
         </div>
 
         {/* Status Badge */}
-        {listing.onChain ? (
-          <div className="bg-green-500/10 border border-green-500 rounded px-2 py-1 text-center">
-            <span className="text-green-400 text-xs font-semibold">ACTIVE</span>
-          </div>
-        ) : (
-          <div className="bg-yellow-500/10 border border-yellow-500 rounded px-2 py-1 text-center">
-            <span className="text-yellow-400 text-xs font-semibold">PENDING</span>
-          </div>
-        )}
+        <div className={`bg-${statusInfo.color}-500/10 border border-${statusInfo.color}-500 rounded px-2 py-1 text-center`}>
+          <span className={`text-${statusInfo.color}-400 text-xs font-semibold`}>{statusInfo.text}</span>
+        </div>
 
         {/* Action Button */}
         <Link to={`/listing/${listingId}`}>

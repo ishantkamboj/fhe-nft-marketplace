@@ -218,6 +218,88 @@ app.get('/api/listings/:id', async (req, res) => {
 });
 
 /**
+ * 🔄 SYNC LISTINGS FROM CONTRACT
+ * Fetches all listings from contract and saves to DB
+ */
+app.post('/api/sync-listings', async (req, res) => {
+  try {
+    console.log('🔄 Syncing listings from contract...');
+
+    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x756cB08969c95D9c9178047304A4b1E316E4c8d7';
+    const RPC_URL = process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
+
+    // Connect to contract
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, [
+      'function listingCount() view returns (uint256)',
+      'function getListing(uint256) view returns (tuple(uint256 listingId, address seller, bytes32[20] encryptedSellerWallet, address buyer, string nftProject, uint256 quantity, uint256 price, uint256 collateral, uint256 buyerPayment, bytes32[32] encryptedPrivateKey, bytes32 privateKeyHash, uint256 mintDate, uint256 confirmationDeadline, uint8 status, uint256 createdAt, uint256 soldAt, uint256 completedAt, bool hasCollateral, bool mintDateSet, bool decryptionEnabled, bool underManualReview, string reviewNotes))'
+    ], provider);
+
+    const listingCount = await contract.listingCount();
+    const count = Number(listingCount);
+
+    console.log(`📊 Found ${count} listings on contract`);
+
+    if (count === 0) {
+      return res.json({ success: true, count: 0, listings: [] });
+    }
+
+    // Fetch all listings
+    const contractListings = await Promise.all(
+      Array.from({ length: count }, (_, i) => i + 1).map(async (id) => {
+        try {
+          const listing = await contract.getListing(id);
+          return {
+            contractListingId: id,
+            listingId: Number(listing.listingId),
+            seller: listing.seller,
+            buyer: listing.buyer,
+            nftProject: listing.nftProject,
+            quantity: Number(listing.quantity),
+            price: Number(listing.price),
+            priceInGwei: Number(listing.price),
+            collateral: Number(listing.collateral),
+            buyerPayment: Number(listing.buyerPayment),
+            mintDate: Number(listing.mintDate),
+            status: Number(listing.status),
+            createdAt: Number(listing.createdAt),
+            soldAt: Number(listing.soldAt),
+            completedAt: Number(listing.completedAt),
+            hasCollateral: listing.hasCollateral,
+            mintDateSet: listing.mintDateSet,
+            onChain: true,
+          };
+        } catch (err) {
+          console.error(`Failed to fetch listing ${id}:`, err);
+          return null;
+        }
+      })
+    );
+
+    const validListings = contractListings.filter((l) => l !== null);
+
+    // Update database - replace all listings with contract data
+    await db.read();
+    db.data.listings = validListings;
+    await db.write();
+
+    console.log(`✅ Synced ${validListings.length} listings to database`);
+
+    res.json({
+      success: true,
+      count: validListings.length,
+      listings: validListings
+    });
+  } catch (error) {
+    console.error('❌ Sync failed:', error);
+    res.status(500).json({
+      error: 'Failed to sync listings',
+      message: error.message
+    });
+  }
+});
+
+/**
  * 📝 LINK LISTING TO CONTRACT
  * Called after on-chain creation to link DB record with contract
  */
