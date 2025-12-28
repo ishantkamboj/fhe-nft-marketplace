@@ -276,13 +276,23 @@ app.post('/api/listings/:tempId/link', async (req, res) => {
 app.post('/api/listings/:id/decrypt', async (req, res) => {
   try {
     const listingId = parseInt(req.params.id);
-    const { buyerAddress, encryptedWallet, encryptedPrivateKey } = req.body;
+    const {
+      buyerAddress,
+      encryptedWallet,
+      encryptedPrivateKey,
+      publicKey,
+      privateKey: fhePrivateKey,
+      signature,
+      startTimestamp,
+      durationDays,
+      contractAddress
+    } = req.body;
 
-    if (!buyerAddress || !encryptedWallet || !encryptedPrivateKey) {
-      return res.status(400).json({ error: 'Missing required fields: buyerAddress, encryptedWallet, encryptedPrivateKey' });
+    if (!buyerAddress || !encryptedWallet || !encryptedPrivateKey || !publicKey || !fhePrivateKey || !signature) {
+      return res.status(400).json({ error: 'Missing required fields for user decryption' });
     }
 
-    console.log(`🔓 Decryption request for listing ${listingId} from ${buyerAddress}`);
+    console.log(`🔓 User-authorized decryption for listing ${listingId} from ${buyerAddress}`);
     console.log('   Encrypted wallet handles:', encryptedWallet.length);
     console.log('   Encrypted key handles:', encryptedPrivateKey.length);
 
@@ -297,7 +307,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     }
 
     // Create contract instance to verify buyer
-    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
     const provider = new ethers.JsonRpcProvider(
       process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
     );
@@ -331,8 +341,8 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     console.log('✅ Buyer verified:', actualBuyer);
 
-    // Encrypted handles were provided by frontend (which has buyer authorization to call getEncryptedData)
-    console.log('🔐 Creating FHEVM instance for decryption...');
+    // Create FHEVM instance for user decryption
+    console.log('🔐 Creating FHEVM instance for user decryption...');
     const fhevmInstance = await createInstance({
       ...SepoliaConfig,
       network: process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
@@ -340,19 +350,33 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     console.log('✅ FHEVM instance created');
 
-    // Decrypt all handles at once using publicDecrypt
-    console.log('🔓 Decrypting wallet address (20 bytes) and private key (32 bytes)...');
-    const allHandles = [...encryptedWallet, ...encryptedPrivateKey];
+    // Prepare handles with contract addresses for userDecrypt
+    console.log('🔓 Decrypting with user signature...');
+    const handlePairs = [
+      ...encryptedWallet.map((handle: string) => ({ handle, contractAddress: CONTRACT_ADDRESS })),
+      ...encryptedPrivateKey.map((handle: string) => ({ handle, contractAddress: CONTRACT_ADDRESS }))
+    ];
 
-    const decryptionResult = await fhevmInstance.publicDecrypt(allHandles);
+    // Use userDecrypt with the signature
+    const decryptionResult = await fhevmInstance.userDecrypt(
+      handlePairs,
+      fhePrivateKey,
+      publicKey,
+      signature,
+      [CONTRACT_ADDRESS],
+      buyerAddress,
+      startTimestamp || Math.floor(Date.now() / 1000),
+      durationDays || 1
+    );
+
     console.log('✅ Decryption completed');
 
     // Extract decrypted values from result
-    // publicDecrypt returns { clearValues: Record<handle, value>, ... }
+    // userDecrypt returns Record<handle, value>
     const walletBytes: number[] = [];
     for (let i = 0; i < 20; i++) {
       const handle = encryptedWallet[i];
-      const value = decryptionResult.clearValues[handle];
+      const value = decryptionResult[handle];
       walletBytes.push(Number(value));
     }
     const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -361,16 +385,16 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     const keyBytes: number[] = [];
     for (let i = 0; i < 32; i++) {
       const handle = encryptedPrivateKey[i];
-      const value = decryptionResult.clearValues[handle];
+      const value = decryptionResult[handle];
       keyBytes.push(Number(value));
     }
-    const privateKey = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log('✅ Private key decrypted (length):', privateKey.length);
+    const privateKeyHex = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('✅ Private key decrypted (length):', privateKeyHex.length);
 
     res.json({
       success: true,
       walletAddress,
-      privateKey,
+      privateKey: privateKeyHex,
       listingId
     });
 
