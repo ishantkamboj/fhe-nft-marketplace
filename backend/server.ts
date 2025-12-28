@@ -224,25 +224,30 @@ app.get('/api/listings/:id', async (req, res) => {
 app.post('/api/listings/:tempId/link', async (req, res) => {
   try {
     const { tempId } = req.params;
-    const { txHash } = req.body;
+    const { listingId, txHash } = req.body;
+
+    // Validate required fields
+    if (!listingId || !txHash) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['listingId', 'txHash']
+      });
+    }
 
     await db.read();
-    
+
     const listing = db.data.listings.find(l => l.id === parseInt(tempId));
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
     }
-
-    // Auto-detect listing ID by counting existing on-chain listings
-    const onChainListings = db.data.listings.filter(l => l.onChain).length;
-    const listingId = onChainListings + 1;
 
     console.log('🔗 Linking listing:');
     console.log('  tempId:', tempId);
     console.log('  contractListingId:', listingId);
     console.log('  txHash:', txHash);
 
-    listing.contractListingId = listingId;
+    // Use the actual listing ID from the contract event
+    listing.contractListingId = parseInt(listingId);
     listing.txHash = txHash;
     listing.onChain = true;
 
