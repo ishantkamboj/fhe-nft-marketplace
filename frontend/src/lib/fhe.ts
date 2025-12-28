@@ -60,9 +60,12 @@ export async function decryptListingData(
     console.log('📝 Requesting user signature...');
 
     // Step 2: Ask user to sign the EIP712 message
+    // Remove EIP712Domain from types (ethers handles it automatically via domain param)
+    const { EIP712Domain, ...typesWithoutDomain } = eip712.types;
+
     const signature = await signer.signTypedData(
       eip712.domain,
-      eip712.types,
+      typesWithoutDomain,
       eip712.message
     );
 
