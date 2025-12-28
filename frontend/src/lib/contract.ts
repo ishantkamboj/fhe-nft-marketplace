@@ -1,4 +1,4 @@
-export const CONTRACT_ADDRESS = "0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8";
+export const CONTRACT_ADDRESS = "0x756cB08969c95D9c9178047304A4b1E316E4c8d7";
 
 export const CONTRACT_ABI = [
   {
@@ -7,7 +7,7 @@ export const CONTRACT_ABI = [
     "inputs": [
       { "name": "nftProject", "type": "string" },
       { "name": "quantity", "type": "uint256" },
-      { "name": "encryptedPriceHandle", "type": "bytes32" },
+      { "name": "priceInGwei", "type": "uint256" },
       { "name": "encryptedWalletHandles", "type": "bytes32[20]" },
       { "name": "encryptedKeyHandles", "type": "bytes32[32]" },
       { "name": "inputProof", "type": "bytes" },
@@ -46,7 +46,7 @@ export const CONTRACT_ABI = [
           { "name": "buyer", "type": "address" },
           { "name": "nftProject", "type": "string" },
           { "name": "quantity", "type": "uint256" },
-          { "name": "encryptedPrice", "type": "bytes32" },
+          { "name": "price", "type": "uint256" },
           { "name": "collateral", "type": "uint256" },
           { "name": "buyerPayment", "type": "uint256" },
           { "name": "encryptedPrivateKey", "type": "bytes32[32]" },
@@ -59,6 +59,7 @@ export const CONTRACT_ABI = [
           { "name": "completedAt", "type": "uint256" },
           { "name": "hasCollateral", "type": "bool" },
           { "name": "mintDateSet", "type": "bool" },
+          { "name": "decryptionEnabled", "type": "bool" },
           { "name": "underManualReview", "type": "bool" },
           { "name": "reviewNotes", "type": "string" }
         ]

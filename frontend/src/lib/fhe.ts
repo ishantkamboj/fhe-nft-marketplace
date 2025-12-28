@@ -30,14 +30,10 @@ export async function decryptListingData(
     // Fetch encrypted data from contract (authorized as buyer)
     const contract = new Contract(contractAddress, CONTRACT_ABI, signer);
     console.log('📥 Fetching encrypted data from contract...');
-    const [walletWithPrice, keyHandles] = await contract.getEncryptedData(listingId);
-
-    // WORKAROUND: Deployed contract's wallet array includes price as first element
-    // Skip the first element (price handle) from wallet array
-    const walletHandles = walletWithPrice.slice(1); // Skip first element which is price
+    const [walletHandles, keyHandles] = await contract.getEncryptedData(listingId);
 
     console.log('✅ Got encrypted handles');
-    console.log('   Wallet handles:', walletHandles.length, '(skipped first element - price)');
+    console.log('   Wallet handles:', walletHandles.length);
     console.log('   Key handles:', keyHandles.length);
 
     // Step 1: Request signature parameters from backend

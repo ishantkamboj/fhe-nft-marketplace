@@ -24,7 +24,8 @@ db.data ||= { listings: [] };
 
 /**
  * 🔥 ENCRYPT LISTING - Complete flow
- * Encrypts: price (1 euint64) + wallet (20 euint8) + key (32 euint8) = 53 FHE values
+ * Encrypts: wallet (20 euint8) + key (32 euint8) = 52 FHE values
+ * Price is PUBLIC (not encrypted)
  * Stores: public metadata in DB for browsing
  */
 app.post('/api/encrypt-listing', async (req, res) => {
@@ -81,15 +82,14 @@ app.post('/api/encrypt-listing', async (req, res) => {
 
     console.log('✅ FHEVM instance created');
 
-    // Create encrypted input for ALL 53 values
+    // Create encrypted input for ALL 52 values (wallet + key only, price is public)
     const input = fhevmInstance.createEncryptedInput(contractAddress, userAddress);
 
-    // 1. Encrypt PRICE (euint64)
+    // Price is PUBLIC (not encrypted)
     const priceInGwei = Math.floor(parseFloat(price) * 1e9);
-    console.log(`💰 Encrypting price: ${price} ETH = ${priceInGwei} Gwei`);
-    input.add64(priceInGwei);
+    console.log(`💰 Price (public): ${price} ETH = ${priceInGwei} Gwei`);
 
-    // 2. Encrypt WALLET (20 euint8)
+    // 1. Encrypt WALLET (20 euint8)
     console.log('🔧 Encrypting wallet (20 bytes)...');
     const walletBytes = Buffer.from(sellerWallet.slice(2), 'hex');
     
@@ -101,10 +101,10 @@ app.post('/api/encrypt-listing', async (req, res) => {
       input.add8(walletBytes[i]);
     }
 
-    // 3. Encrypt PRIVATE KEY (32 euint8)
+    // 2. Encrypt PRIVATE KEY (32 euint8)
     console.log('🔑 Encrypting private key (32 bytes)...');
     const keyBytes = Buffer.from(privateKey.slice(2), 'hex');
-    
+
     if (keyBytes.length !== 32) {
       return res.status(400).json({ error: 'Private key must be exactly 32 bytes' });
     }
@@ -113,17 +113,16 @@ app.post('/api/encrypt-listing', async (req, res) => {
       input.add8(keyBytes[i]);
     }
 
-    console.log('⚡ Encrypting all 53 values...');
+    console.log('⚡ Encrypting all 52 values...');
     const encrypted = await input.encrypt();
     console.log('✅ Encryption complete!');
 
-    // Extract handles
+    // Extract handles (no price - wallet starts at index 0)
     const handles = encrypted.handles;
     const proof = encrypted.inputProof;
 
-    const encryptedPriceHandle = handles[0];
-    const encryptedWalletHandles = handles.slice(1, 21);
-    const encryptedKeyHandles = handles.slice(21, 53);
+    const encryptedWalletHandles = handles.slice(0, 20);
+    const encryptedKeyHandles = handles.slice(20, 52);
 
     // Save public metadata to database
     const listingMetadata = {
@@ -149,15 +148,15 @@ app.post('/api/encrypt-listing', async (req, res) => {
     res.json({
       success: true,
       encrypted: {
-        price: encryptedPriceHandle,
         wallet: encryptedWalletHandles,
         privateKey: encryptedKeyHandles,
         proof: proof
       },
       publicData: listingMetadata,
+      priceInGwei: priceInGwei,
       stats: {
-        totalEncryptedValues: 53,
-        priceValues: 1,
+        totalEncryptedValues: 52,
+        priceValues: 0,
         walletValues: 20,
         keyValues: 32,
         estimatedGas: '~9,000,000 gas'
@@ -285,7 +284,7 @@ app.post('/api/listings/:id/prepare-decrypt', async (req, res) => {
     console.log(`🔑 Preparing decryption signature for listing ${listingId}`);
 
     // Verify the buyer actually owns this listing on-chain
-    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x756cB08969c95D9c9178047304A4b1E316E4c8d7';
     const provider = new ethers.JsonRpcProvider(
       process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
     );
@@ -386,7 +385,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     }
 
     // Create contract instance to verify buyer
-    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x679D729C04E1Ae78b6BFDe2Ed5097CED197bbCb8';
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x756cB08969c95D9c9178047304A4b1E316E4c8d7';
     const provider = new ethers.JsonRpcProvider(
       process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
     );
