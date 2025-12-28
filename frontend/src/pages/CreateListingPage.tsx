@@ -480,7 +480,9 @@ export default function CreateListingPage() {
             type="datetime-local"
             value={formData.mintDate}
             onChange={(e) => setFormData({...formData, mintDate: e.target.value})}
-            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.mintDate ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
+            min={new Date().toISOString().slice(0, 16)}
+            className={`w-full px-4 py-3 rounded-lg bg-gray-800 text-white border ${validationErrors.mintDate ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none [color-scheme:dark]`}
+            style={{ colorScheme: 'dark' }}
           />
           {validationErrors.mintDate && (
             <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.mintDate}</p>
@@ -498,7 +500,7 @@ export default function CreateListingPage() {
           disabled={isPending || isEncrypting || isConfirming}
           className="w-full bg-primary hover:bg-primary/80 text-white py-4 rounded-lg font-semibold text-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isEncrypting ? 'Encrypting (53 values)...' : isPending ? 'Creating...' : isConfirming ? 'Confirming...' : 'Create Listing'}
+          {isEncrypting ? 'Encrypting (52 values)...' : isPending ? 'Creating...' : isConfirming ? 'Confirming...' : 'Create Listing'}
         </button>
 
         {!isConnected && (

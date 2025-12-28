@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import ListingCard from '@/components/ListingCard';
 import { Link } from 'react-router-dom';
+import { BrowserProvider, Contract } from 'ethers';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -21,11 +23,51 @@ export default function HomePage() {
     try {
       setError('');
       const response = await fetch(`${BACKEND_URL}/api/listings`);
-      if (response.ok) {
-        const data = await response.json();
-        setListings(data.listings || []);
-      } else {
+      if (!response.ok) {
         setError(`Failed to load listings: Server returned ${response.status}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      const backendListings = data.listings || [];
+
+      // Filter out pending listings (not on-chain)
+      const onChainListings = backendListings.filter((l: any) => l.onChain && l.contractListingId != null);
+
+      if (onChainListings.length === 0) {
+        setListings([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch contract data to get status for each on-chain listing
+      try {
+        const provider = new BrowserProvider(window.ethereum);
+        const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+        const enrichedListings = await Promise.all(
+          onChainListings.map(async (listing: any) => {
+            try {
+              const contractListing = await contract.getListing(listing.contractListingId);
+              return {
+                ...listing,
+                status: contractListing.status, // 0=Active, 1=Sold, 2=Completed, etc.
+                buyer: contractListing.buyer,
+                soldAt: contractListing.soldAt ? Number(contractListing.soldAt) : null,
+              };
+            } catch (err) {
+              console.error(`Failed to fetch contract data for listing ${listing.contractListingId}:`, err);
+              return listing; // Return original if fetch fails
+            }
+          })
+        );
+
+        setListings(enrichedListings);
+      } catch (err) {
+        console.error('Failed to fetch contract data:', err);
+        // Fallback: show backend listings without contract data
+        setListings(onChainListings);
       }
     } catch (error: any) {
       console.error('Failed to fetch listings:', error);
@@ -40,8 +82,11 @@ export default function HomePage() {
     listing.nftProject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Count active listings (onChain = true, not sold yet)
-  const activeCount = listings.filter((l: any) => l.onChain && !l.buyer).length;
+  // Separate active and sold listings (status: 0=Active, 1=Sold, 2=Completed, etc.)
+  const activeListings = filteredListings.filter((l: any) => l.status === 0);
+  const soldListings = filteredListings.filter((l: any) => l.status === 1 || l.status === 2 || l.status === 3);
+
+  const activeCount = activeListings.length;
 
   return (
     <div className="space-y-8">
@@ -98,52 +143,70 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Active Listings */}
-      <div className="space-y-4">
-        <h2 className="text-3xl font-bold text-white">Active Listings</h2>
-        
-        {error ? (
-          <div className="bg-red-500/10 border border-red-500 rounded-lg p-6">
-            <div className="flex items-start space-x-3">
-              <div className="text-red-400 text-2xl">⚠️</div>
-              <div>
-                <h3 className="text-red-400 font-semibold mb-2">Error Loading Listings</h3>
-                <p className="text-red-300 text-sm mb-4">{error}</p>
-                <button
-                  onClick={() => {
-                    setLoading(true);
-                    fetchListings();
-                  }}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition"
-                >
-                  Try Again
-                </button>
+      {error ? (
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-6">
+          <div className="flex items-start space-x-3">
+            <div className="text-red-400 text-2xl">⚠️</div>
+            <div>
+              <h3 className="text-red-400 font-semibold mb-2">Error Loading Listings</h3>
+              <p className="text-red-300 text-sm mb-4">{error}</p>
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  fetchListings();
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : loading ? (
+        <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
+          <div className="animate-pulse">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-gray-400 text-lg">Loading listings...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Active Listings */}
+          <div className="space-y-4">
+            <h2 className="text-3xl font-bold text-white">Active Listings</h2>
+            {activeListings.length === 0 ? (
+              <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
+                <p className="text-gray-400 text-lg">No active listings yet</p>
+                <p className="text-gray-500 mt-2">Be the first to create one!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeListings.map((listing: any) => (
+                  <ListingCard
+                    key={listing.contractListingId || listing.id}
+                    listing={listing}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sold Listings */}
+          {soldListings.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold text-white">Sold Listings</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {soldListings.map((listing: any) => (
+                  <ListingCard
+                    key={listing.contractListingId || listing.id}
+                    listing={listing}
+                  />
+                ))}
               </div>
             </div>
-          </div>
-        ) : loading ? (
-          <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
-            <div className="animate-pulse">
-              <div className="text-4xl mb-4">⏳</div>
-              <p className="text-gray-400 text-lg">Loading listings...</p>
-            </div>
-          </div>
-        ) : filteredListings.length === 0 ? (
-          <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
-            <p className="text-gray-400 text-lg">No active listings yet</p>
-            <p className="text-gray-500 mt-2">Be the first to create one!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredListings.map((listing: any) => (
-              <ListingCard 
-                key={listing.contractListingId || listing.id} 
-                listing={listing}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
 
       {/* How It Works */}
       <div className="bg-gray-800/30 rounded-lg p-8 border border-gray-700">
