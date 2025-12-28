@@ -23,56 +23,59 @@ export default function HomePage() {
   const fetchListings = async () => {
     try {
       setError('');
-      const response = await fetch(`${BACKEND_URL}/api/listings`);
-      if (!response.ok) {
-        setError(`Failed to load listings: Server returned ${response.status}`);
-        setLoading(false);
-        return;
-      }
 
-      const data = await response.json();
-      const backendListings = data.listings || [];
+      // Fetch directly from contract instead of backend DB
+      const provider = new JsonRpcProvider(RPC_URL);
+      const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
-      // Filter out pending listings (not on-chain)
-      const onChainListings = backendListings.filter((l: any) => l.onChain && l.contractListingId != null);
+      // Get total number of listings
+      const listingCount = await contract.listingCount();
+      const count = Number(listingCount);
 
-      if (onChainListings.length === 0) {
+      if (count === 0) {
         setListings([]);
         setLoading(false);
         return;
       }
 
-      // Fetch contract data to get status for each on-chain listing
-      try {
-        const provider = new JsonRpcProvider(RPC_URL);
-        const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      // Fetch all listings from contract
+      const allListings = await Promise.all(
+        Array.from({ length: count }, (_, i) => i + 1).map(async (listingId) => {
+          try {
+            const listing = await contract.getListing(listingId);
+            return {
+              contractListingId: listingId,
+              listingId: Number(listing.listingId),
+              seller: listing.seller,
+              buyer: listing.buyer,
+              nftProject: listing.nftProject,
+              quantity: Number(listing.quantity),
+              price: Number(listing.price),
+              priceInGwei: Number(listing.price),
+              collateral: Number(listing.collateral),
+              buyerPayment: Number(listing.buyerPayment),
+              mintDate: Number(listing.mintDate),
+              status: Number(listing.status),
+              createdAt: Number(listing.createdAt),
+              soldAt: Number(listing.soldAt),
+              completedAt: Number(listing.completedAt),
+              hasCollateral: listing.hasCollateral,
+              mintDateSet: listing.mintDateSet,
+              onChain: true,
+            };
+          } catch (err) {
+            console.error(`Failed to fetch listing ${listingId}:`, err);
+            return null;
+          }
+        })
+      );
 
-        const enrichedListings = await Promise.all(
-          onChainListings.map(async (listing: any) => {
-            try {
-              const contractListing = await contract.getListing(listing.contractListingId);
-              return {
-                ...listing,
-                status: contractListing.status, // 0=Active, 1=Sold, 2=Completed, etc.
-                buyer: contractListing.buyer,
-                soldAt: contractListing.soldAt ? Number(contractListing.soldAt) : null,
-              };
-            } catch (err) {
-              console.error(`Failed to fetch contract data for listing ${listing.contractListingId}:`, err);
-              return listing; // Return original if fetch fails
-            }
-          })
-        );
-
-        setListings(enrichedListings);
-      } catch (err) {
-        console.error('Failed to fetch contract data:', err);
-        // Fallback: show backend listings without contract data
-        setListings(onChainListings);
-      }
+      // Filter out null entries (failed fetches)
+      const validListings = allListings.filter((l) => l !== null);
+      setListings(validListings);
     } catch (error: any) {
-      console.error('Failed to fetch listings:', error);
-      setError(`Failed to connect to backend: ${error.message || 'Network error'}`);
+      console.error('Failed to fetch listings from contract:', error);
+      setError(`Failed to load listings: ${error.message || 'Network error'}`);
     } finally {
       setLoading(false);
     }
