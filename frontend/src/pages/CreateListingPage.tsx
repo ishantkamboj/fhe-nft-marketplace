@@ -3,6 +3,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { parseEther, Contract, BrowserProvider } from 'ethers';
 import { useNavigate } from 'react-router-dom';
+import { decodeEventLog } from 'viem';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -270,26 +271,29 @@ export default function CreateListingPage() {
     if (isSuccess && tempListingId && hash && receipt) {
       const linkListing = async () => {
         try {
-          // Extract listing ID from event logs
+          // Extract listing ID from event logs using proper decoding
           let contractListingId = 1; // Default fallback
 
           if (receipt.logs && receipt.logs.length > 0) {
-            // Find the ListingCreated event
-            // Event signature: ListingCreated(uint256 indexed listingId, string nftProject, uint256 quantity, uint256 collateral)
-            const listingCreatedTopic = '0x' + Array.from(
-              new TextEncoder().encode('ListingCreated(uint256,string,uint256,uint256)')
-            ).map(b => b.toString(16).padStart(2, '0')).join('');
-
-            // In Ethereum events, indexed parameters appear in topics
-            // topics[0] = event signature hash
-            // topics[1] = listingId (indexed)
+            // Decode all logs and find ListingCreated event
             for (const log of receipt.logs) {
-              if (log.topics && log.topics.length >= 2) {
-                // Parse the listing ID from topics[1]
-                const listingIdFromEvent = BigInt(log.topics[1]);
-                console.log('✅ Found listing ID from event:', listingIdFromEvent.toString());
-                contractListingId = Number(listingIdFromEvent);
-                break;
+              try {
+                const decoded = decodeEventLog({
+                  abi: CONTRACT_ABI,
+                  data: log.data,
+                  topics: log.topics,
+                });
+
+                // Check if this is the ListingCreated event
+                if (decoded.eventName === 'ListingCreated') {
+                  const listingId = decoded.args.listingId;
+                  console.log('✅ Found ListingCreated event with ID:', listingId.toString());
+                  contractListingId = Number(listingId);
+                  break;
+                }
+              } catch (e) {
+                // Skip logs that don't match our ABI
+                continue;
               }
             }
           }
