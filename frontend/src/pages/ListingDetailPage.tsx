@@ -63,11 +63,31 @@ export default function ListingDetailPage() {
     fetchBackendData();
   }, [listingId]);
 
+  console.log('📋 Listing data from contract:', listing);
+  console.log('📋 Listing type:', typeof listing);
+  console.log('📋 Is array?', Array.isArray(listing));
+
   if (!listing) {
     return (
       <div className="text-center text-white py-12">
         <div className="text-6xl mb-4">⏳</div>
         <p className="text-xl">Loading listing...</p>
+      </div>
+    );
+  }
+
+  // Check if listing is valid (contract returns data)
+  if (!Array.isArray(listing) && typeof listing !== 'object') {
+    return (
+      <div className="text-center text-white py-12">
+        <div className="text-6xl mb-4">⚠️</div>
+        <p className="text-xl">Listing not found on contract</p>
+        <p className="text-sm text-gray-400 mt-2">ID: {listingId.toString()}</p>
+        {backendListing && (
+          <p className="text-sm text-yellow-400 mt-2">
+            Found in backend but not yet confirmed on blockchain
+          </p>
+        )}
       </div>
     );
   }
