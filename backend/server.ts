@@ -340,22 +340,29 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     console.log('✅ FHEVM instance created');
 
-    // Decrypt wallet address (20 bytes from euint8 handles)
-    console.log('🔓 Decrypting wallet address (20 bytes)...');
+    // Decrypt all handles at once using publicDecrypt
+    console.log('🔓 Decrypting wallet address (20 bytes) and private key (32 bytes)...');
+    const allHandles = [...encryptedWallet, ...encryptedPrivateKey];
+
+    const decryptionResult = await fhevmInstance.publicDecrypt(allHandles);
+    console.log('✅ Decryption completed');
+
+    // Extract decrypted values from result
+    // publicDecrypt returns { clearValues: Record<handle, value>, ... }
     const walletBytes: number[] = [];
     for (let i = 0; i < 20; i++) {
-      const decrypted = await fhevmInstance.decryptUint8(CONTRACT_ADDRESS, encryptedWallet[i]);
-      walletBytes.push(decrypted);
+      const handle = encryptedWallet[i];
+      const value = decryptionResult.clearValues[handle];
+      walletBytes.push(Number(value));
     }
     const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
     console.log('✅ Wallet decrypted:', walletAddress);
 
-    // Decrypt private key (32 bytes from euint8 handles)
-    console.log('🔓 Decrypting private key (32 bytes)...');
     const keyBytes: number[] = [];
     for (let i = 0; i < 32; i++) {
-      const decrypted = await fhevmInstance.decryptUint8(CONTRACT_ADDRESS, encryptedPrivateKey[i]);
-      keyBytes.push(decrypted);
+      const handle = encryptedPrivateKey[i];
+      const value = decryptionResult.clearValues[handle];
+      keyBytes.push(Number(value));
     }
     const privateKey = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
     console.log('✅ Private key decrypted (length):', privateKey.length);
