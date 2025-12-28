@@ -246,7 +246,7 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
      */
     function _bytesToAddress(uint8[20] calldata b) internal pure returns (address) {
         bytes20 b20;
-        assembly {
+        assembly ("memory-safe") {
             calldatacopy(0, b, 20)
             b20 := mload(0)
         }
@@ -258,7 +258,7 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
      */
     function _bytesToBytes32(uint8[32] calldata b) internal pure returns (bytes32) {
         bytes32 b32;
-        assembly {
+        assembly ("memory-safe") {
             calldatacopy(0, b, 32)
             b32 := mload(0)
         }
