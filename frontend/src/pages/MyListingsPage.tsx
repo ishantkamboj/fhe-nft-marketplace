@@ -1,6 +1,6 @@
 import { useAccount, useReadContract } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
-import ListingCard from '@/components/ListingCard';
+import ListingCardById from '@/components/ListingCardById';
 import { Link } from 'react-router-dom';
 
 export default function MyListingsPage() {
@@ -51,7 +51,7 @@ export default function MyListingsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listingsArray.map((id: bigint) => (
-            <ListingCard key={id.toString()} listingId={id} />
+            <ListingCardById key={id.toString()} listingId={id} />
           ))}
         </div>
       )}

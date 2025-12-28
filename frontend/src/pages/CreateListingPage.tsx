@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
-import { parseEther } from 'ethers';
+import { parseEther, Contract, BrowserProvider } from 'ethers';
 import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
@@ -10,7 +10,7 @@ export default function CreateListingPage() {
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
 
   // Debug connection status
   useEffect(() => {
@@ -43,21 +43,95 @@ export default function CreateListingPage() {
 
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [tempListingId, setTempListingId] = useState<number | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // NFT Project name
+    if (!formData.nftProject.trim()) {
+      errors.nftProject = 'Project name is required';
+    } else if (formData.nftProject.length < 2) {
+      errors.nftProject = 'Project name must be at least 2 characters';
+    } else if (formData.nftProject.length > 50) {
+      errors.nftProject = 'Project name must be less than 50 characters';
+    }
+
+    // Quantity
+    const qty = parseInt(formData.quantity);
+    if (isNaN(qty) || qty < 1) {
+      errors.quantity = 'Quantity must be at least 1';
+    } else if (qty > 100) {
+      errors.quantity = 'Quantity cannot exceed 100';
+    }
+
+    // Price
+    const price = parseFloat(formData.price);
+    if (!formData.price || isNaN(price)) {
+      errors.price = 'Price is required';
+    } else if (price <= 0) {
+      errors.price = 'Price must be greater than 0';
+    } else if (price > 100) {
+      errors.price = 'Price seems too high (max 100 ETH)';
+    }
+
+    // Seller wallet address
+    if (!formData.sellerWallet) {
+      errors.sellerWallet = 'Seller wallet address is required';
+    } else if (!formData.sellerWallet.match(/^0x[0-9a-fA-F]{40}$/)) {
+      errors.sellerWallet = 'Invalid Ethereum address format (must be 0x + 40 hex characters)';
+    }
+
+    // Private key
+    if (!formData.privateKey) {
+      errors.privateKey = 'Private key is required';
+    } else if (!formData.privateKey.match(/^0x[0-9a-fA-F]{64}$/)) {
+      errors.privateKey = 'Invalid private key format (must be 0x + 64 hex characters)';
+    }
+
+    // Collateral (optional but validate if provided)
+    if (formData.collateral) {
+      const collateral = parseFloat(formData.collateral);
+      if (isNaN(collateral) || collateral < 0) {
+        errors.collateral = 'Collateral must be a positive number';
+      } else if (collateral > 10) {
+        errors.collateral = 'Collateral seems too high (max 10 ETH recommended)';
+      }
+    }
+
+    // Mint date (optional but validate if provided)
+    if (formData.mintDate) {
+      const mintDate = new Date(formData.mintDate);
+      const now = new Date();
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+      if (mintDate < now) {
+        errors.mintDate = 'Mint date cannot be in the past';
+      } else if (mintDate > oneYearFromNow) {
+        errors.mintDate = 'Mint date cannot be more than 1 year in the future';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // CRITICAL CHECKS
-    console.log('🔍 Pre-flight checks:');
-    console.log('  isConnected:', isConnected);
-    console.log('  address:', address);
-    console.log('  CONTRACT_ADDRESS:', CONTRACT_ADDRESS);
-    
+
+    // Validate form
+    if (!validateForm()) {
+      alert('Please fix the validation errors before submitting');
+      return;
+    }
+
+    // Connection checks
     if (!isConnected) {
       alert('❌ Wallet not connected! Please connect MetaMask first.');
       return;
     }
-    
+
     if (!address) {
       alert('❌ No wallet address found! Please reconnect MetaMask.');
       return;
@@ -204,18 +278,63 @@ export default function CreateListingPage() {
   };
 
   // Link temp listing to contract after success
+  useEffect(() => {
+    if (isSuccess && tempListingId && hash && receipt) {
+      const linkListing = async () => {
+        try {
+          // Extract listing ID from event logs
+          let contractListingId = 1; // Default fallback
+
+          if (receipt.logs && receipt.logs.length > 0) {
+            // Find the ListingCreated event
+            // Event signature: ListingCreated(uint256 indexed listingId, string nftProject, uint256 quantity, uint256 collateral)
+            const listingCreatedTopic = '0x' + Array.from(
+              new TextEncoder().encode('ListingCreated(uint256,string,uint256,uint256)')
+            ).map(b => b.toString(16).padStart(2, '0')).join('');
+
+            // In Ethereum events, indexed parameters appear in topics
+            // topics[0] = event signature hash
+            // topics[1] = listingId (indexed)
+            for (const log of receipt.logs) {
+              if (log.topics && log.topics.length >= 2) {
+                // Parse the listing ID from topics[1]
+                const listingIdFromEvent = BigInt(log.topics[1]);
+                console.log('✅ Found listing ID from event:', listingIdFromEvent.toString());
+                contractListingId = Number(listingIdFromEvent);
+                break;
+              }
+            }
+          }
+
+          console.log(`🔗 Linking backend listing ${tempListingId} to contract listing ${contractListingId}`);
+
+          // Link the listing
+          const response = await fetch(`${BACKEND_URL}/api/listings/${tempListingId}/link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              listingId: contractListingId,
+              txHash: hash,
+            }),
+          });
+
+          if (response.ok) {
+            console.log('✅ Successfully linked listing');
+            setTimeout(() => navigate('/'), 2000);
+          } else {
+            console.error('Failed to link listing:', await response.text());
+          }
+        } catch (error) {
+          console.error('Error linking listing:', error);
+        }
+      };
+
+      linkListing();
+    }
+  }, [isSuccess, tempListingId, hash, receipt, navigate]);
+
+  // Show success message
   if (isSuccess && tempListingId && hash) {
-    // Link the listing
-    fetch(`${BACKEND_URL}/api/listings/${tempListingId}/link`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        listingId: 1, // You'd get this from contract event
-        txHash: hash,
-      }),
-    }).then(() => {
-      setTimeout(() => navigate('/'), 2000);
-    });
 
     return (
       <div className="max-w-2xl mx-auto bg-green-500/10 border border-green-500 rounded-lg p-8 text-center">
@@ -242,9 +361,14 @@ export default function CreateListingPage() {
             placeholder="Azuki, Pudgy Penguins, etc."
             value={formData.nftProject}
             onChange={(e) => setFormData({...formData, nftProject: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.nftProject ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
-          <p className="text-gray-400 text-sm mt-1">This will be publicly visible</p>
+          {validationErrors.nftProject && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.nftProject}</p>
+          )}
+          {!validationErrors.nftProject && (
+            <p className="text-gray-400 text-sm mt-1">This will be publicly visible</p>
+          )}
         </div>
 
         {/* Quantity */}
@@ -258,8 +382,11 @@ export default function CreateListingPage() {
             min="1"
             value={formData.quantity}
             onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.quantity ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
+          {validationErrors.quantity && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.quantity}</p>
+          )}
         </div>
 
         {/* Price */}
@@ -274,9 +401,14 @@ export default function CreateListingPage() {
             placeholder="0.1"
             value={formData.price}
             onChange={(e) => setFormData({...formData, price: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.price ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
-          <p className="text-green-400 text-sm mt-1">✅ Will be visible to buyers!</p>
+          {validationErrors.price && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.price}</p>
+          )}
+          {!validationErrors.price && (
+            <p className="text-green-400 text-sm mt-1">✅ Will be visible to buyers!</p>
+          )}
         </div>
 
         {/* Seller Wallet */}
@@ -290,9 +422,14 @@ export default function CreateListingPage() {
             placeholder="0x..."
             value={formData.sellerWallet}
             onChange={(e) => setFormData({...formData, sellerWallet: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.sellerWallet ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
-          <p className="text-purple-400 text-sm mt-1">🔐 Will be encrypted (only buyer sees)</p>
+          {validationErrors.sellerWallet && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.sellerWallet}</p>
+          )}
+          {!validationErrors.sellerWallet && (
+            <p className="text-purple-400 text-sm mt-1">🔐 Will be encrypted (only buyer sees)</p>
+          )}
         </div>
 
         {/* Private Key */}
@@ -306,9 +443,14 @@ export default function CreateListingPage() {
             rows={3}
             value={formData.privateKey}
             onChange={(e) => setFormData({...formData, privateKey: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none font-mono text-sm"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.privateKey ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none font-mono text-sm`}
           />
-          <p className="text-purple-400 text-sm mt-1">🔐 Will be encrypted - buyer gets this after payment</p>
+          {validationErrors.privateKey && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.privateKey}</p>
+          )}
+          {!validationErrors.privateKey && (
+            <p className="text-purple-400 text-sm mt-1">🔐 Will be encrypted - buyer gets this after payment</p>
+          )}
         </div>
 
         {/* Collateral */}
@@ -322,16 +464,19 @@ export default function CreateListingPage() {
             placeholder="0.05 (optional, but recommended)"
             value={formData.collateral}
             onChange={(e) => setFormData({...formData, collateral: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.collateral ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
-          {!formData.collateral && (
+          {validationErrors.collateral && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.collateral}</p>
+          )}
+          {!validationErrors.collateral && !formData.collateral && (
             <div className="bg-red-500/10 border border-red-500 rounded-lg p-3 mt-2">
               <p className="text-red-400 text-sm">
                 ⚠️ NO COLLATERAL - Buyers will see a warning. Lock mint fee to build trust!
               </p>
             </div>
           )}
-          {formData.collateral && (
+          {!validationErrors.collateral && formData.collateral && (
             <p className="text-green-400 text-sm mt-1">
               ✅ You'll get this back when deal completes
             </p>
@@ -347,11 +492,16 @@ export default function CreateListingPage() {
             type="datetime-local"
             value={formData.mintDate}
             onChange={(e) => setFormData({...formData, mintDate: e.target.value})}
-            className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-primary focus:outline-none"
+            className={`w-full px-4 py-3 rounded-lg bg-gray-900 text-white border ${validationErrors.mintDate ? 'border-red-500' : 'border-gray-700'} focus:border-primary focus:outline-none`}
           />
-          <p className="text-gray-400 text-sm mt-1">
-            Leave empty if TBD - you can update later (max 1 year)
-          </p>
+          {validationErrors.mintDate && (
+            <p className="text-red-400 text-sm mt-1">⚠️ {validationErrors.mintDate}</p>
+          )}
+          {!validationErrors.mintDate && (
+            <p className="text-gray-400 text-sm mt-1">
+              Leave empty if TBD - you can update later (max 1 year)
+            </p>
+          )}
         </div>
 
         {/* Submit Button */}

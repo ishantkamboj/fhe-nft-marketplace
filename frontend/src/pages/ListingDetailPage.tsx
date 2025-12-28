@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useWalletClient } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI, LISTING_STATUS } from '@/lib/contract';
 import { formatEther, parseEther } from 'ethers';
+import { initFheInstance } from '@/lib/fhe';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -10,9 +11,17 @@ export default function ListingDetailPage() {
   const params = useParams();
   const listingId = BigInt(params.id as string);
   const { address, isConnected } = useAccount();
-  
+  const { data: walletClient } = useWalletClient();
+
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [backendListing, setBackendListing] = useState<any>(null);
+  const [decryptedPrivateKey, setDecryptedPrivateKey] = useState<string>('');
+  const [decryptedWallet, setDecryptedWallet] = useState<string>('');
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptionError, setDecryptionError] = useState<string>('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationNotes, setConfirmationNotes] = useState('');
+  const [backendError, setBackendError] = useState<string>('');
 
   const { data: listing, refetch } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
@@ -28,6 +37,7 @@ export default function ListingDetailPage() {
   useEffect(() => {
     const fetchBackendData = async () => {
       try {
+        setBackendError('');
         const response = await fetch(`${BACKEND_URL}/api/listings`);
         if (response.ok) {
           const data = await response.json();
@@ -39,13 +49,17 @@ export default function ListingDetailPage() {
             setBackendListing(found);
           } else {
             console.log('⚠️ No backend listing found for ID:', listingId);
+            setBackendError('Listing metadata not found in backend');
           }
+        } else {
+          setBackendError(`Backend error: ${response.status}`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch backend data:', error);
+        setBackendError(`Failed to connect to backend: ${error.message || 'Network error'}`);
       }
     };
-    
+
     fetchBackendData();
   }, [listingId]);
 
@@ -99,7 +113,7 @@ export default function ListingDetailPage() {
     }
 
     console.log('💰 Buying listing for:', backendListing.price, 'ETH');
-    
+
     writeContract({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: CONTRACT_ABI,
@@ -109,8 +123,52 @@ export default function ListingDetailPage() {
     });
   };
 
+  // Refetch listing after successful transaction
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => {
+        refetch();
+      }, 2000);
+    }
+  }, [isSuccess, refetch]);
+
   const handleGetPrivateKey = async () => {
+    if (!walletClient) {
+      setDecryptionError('Wallet not connected');
+      return;
+    }
+
     setShowPrivateKey(true);
+    setIsDecrypting(true);
+    setDecryptionError('');
+
+    try {
+      console.log('🔑 Attempting to access encrypted data...');
+      console.log('Encrypted private key (32 euint8 values):', encryptedPrivateKey);
+      console.log('Encrypted wallet (20 euint8 values):', encryptedSellerWallet);
+
+      // Show that we have access to the encrypted data
+      setDecryptionError(
+        'Encrypted data is accessible! Full FHE decryption requires Zama Gateway integration. ' +
+        'The private key and seller wallet are encrypted with FHE and stored on-chain. ' +
+        'To decrypt: generate EIP-712 signature → request re-encryption → decrypt with fhevmjs.'
+      );
+
+    } catch (error: any) {
+      console.error('Error accessing encrypted data:', error);
+      setDecryptionError(error.message || 'Failed to access encrypted data');
+    } finally {
+      setIsDecrypting(false);
+    }
+  };
+
+  const handleConfirmMint = (success: boolean) => {
+    writeContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'confirmMint',
+      args: [listingId, success, confirmationNotes || ''],
+    });
   };
 
   return (
@@ -179,6 +237,19 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
+      {/* Backend Error Alert */}
+      {backendError && (
+        <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
+          <div className="flex items-start space-x-2">
+            <span className="text-yellow-400">⚠️</span>
+            <div>
+              <p className="text-yellow-300 text-sm font-semibold">Backend Connection Issue</p>
+              <p className="text-yellow-200 text-xs mt-1">{backendError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Price Section */}
       <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
         <h3 className="text-xl font-semibold text-white mb-4">Price</h3>
@@ -236,18 +307,126 @@ export default function ListingDetailPage() {
           {!showPrivateKey ? (
             <button
               onClick={handleGetPrivateKey}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition"
+              disabled={isDecrypting}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              🔓 Reveal Private Key
+              {isDecrypting ? '🔄 Loading...' : '🔓 Reveal Private Key'}
             </button>
           ) : (
             <div className="space-y-4">
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-white break-all">
-                {encryptedPrivateKey ? 'Encrypted data - decrypt with your wallet' : 'Loading...'}
+              {isDecrypting ? (
+                <div className="bg-gray-900 rounded-lg p-4 text-center">
+                  <div className="text-white">🔄 Accessing encrypted data...</div>
+                </div>
+              ) : decryptedPrivateKey ? (
+                <>
+                  <div>
+                    <label className="text-gray-400 text-sm block mb-2">Private Key:</label>
+                    <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400 break-all">
+                      {decryptedPrivateKey}
+                    </div>
+                  </div>
+                  {decryptedWallet && (
+                    <div>
+                      <label className="text-gray-400 text-sm block mb-2">Seller Wallet:</label>
+                      <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-blue-400 break-all">
+                        {decryptedWallet}
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
+                    <p className="text-yellow-300 text-sm">
+                      ⚠️ Keep this private! Import to MetaMask and wait for mint day.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-4">
+                    <p className="text-blue-300 text-sm font-semibold mb-2">🔐 Encrypted Data Available</p>
+                    <p className="text-blue-200 text-xs">
+                      {decryptionError || 'You have permission to access this data. Decryption in progress...'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <div className="text-gray-400 text-xs mb-2">Encrypted Private Key (32 bytes):</div>
+                    <div className="font-mono text-xs text-gray-500 break-all">
+                      {JSON.stringify(encryptedPrivateKey).slice(0, 150)}...
+                    </div>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4">
+                    <div className="text-gray-400 text-xs mb-2">Encrypted Seller Wallet (20 bytes):</div>
+                    <div className="font-mono text-xs text-gray-500 break-all">
+                      {JSON.stringify(encryptedSellerWallet).slice(0, 150)}...
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mint Confirmation Section (for buyers after purchase) */}
+      {isBuyer && status === 1 && (
+        <div className="bg-purple-500/10 border border-purple-500 rounded-lg p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">Confirm Mint Status</h3>
+
+          {!showConfirmation ? (
+            <>
+              <p className="text-gray-300 mb-4">
+                After using the private key to mint, confirm whether the mint was successful or if there were any issues.
+              </p>
+              <button
+                onClick={() => setShowConfirmation(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition"
+              >
+                Confirm Mint Status
+              </button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-300 text-sm block mb-2">
+                  Notes (optional):
+                </label>
+                <textarea
+                  value={confirmationNotes}
+                  onChange={(e) => setConfirmationNotes(e.target.value)}
+                  placeholder="Any issues or notes about the mint..."
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-500 focus:outline-none resize-none"
+                  rows={3}
+                />
               </div>
-              <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
-                <p className="text-yellow-300 text-sm">
-                  ⚠️ Keep this private! Import to MetaMask and wait for mint day.
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => handleConfirmMint(true)}
+                  disabled={isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? 'Confirming...' : '✅ Mint Successful'}
+                </button>
+                <button
+                  onClick={() => handleConfirmMint(false)}
+                  disabled={isPending}
+                  className="bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? 'Reporting...' : '❌ Mint Failed'}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="text-gray-400 hover:text-white text-sm underline"
+              >
+                Cancel
+              </button>
+
+              <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-4 mt-4">
+                <p className="text-blue-300 text-xs">
+                  💡 <strong>Success:</strong> Releases payment to seller + collateral<br/>
+                  💡 <strong>Failed:</strong> Opens dispute for manual review
                 </p>
               </div>
             </div>
@@ -255,12 +434,21 @@ export default function ListingDetailPage() {
         </div>
       )}
 
+      {/* Confirmation Deadline Warning */}
+      {isBuyer && status === 1 && confirmationDeadline > 0n && (
+        <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
+          <p className="text-yellow-300 text-sm">
+            ⏰ Please confirm by: <strong>{formatMintDate(confirmationDeadline)}</strong>
+          </p>
+        </div>
+      )}
+
       {/* Success Message */}
       {isSuccess && (
         <div className="bg-green-500/10 border border-green-500 rounded-lg p-6 text-center">
           <div className="text-6xl mb-4">✅</div>
-          <h3 className="text-2xl font-bold text-white mb-2">Purchase Successful!</h3>
-          <p className="text-gray-300">You can now access the private key above</p>
+          <h3 className="text-2xl font-bold text-white mb-2">Transaction Successful!</h3>
+          <p className="text-gray-300">Your transaction has been confirmed</p>
           <p className="text-sm text-gray-400 mt-2">Transaction: {hash?.slice(0, 10)}...{hash?.slice(-8)}</p>
         </div>
       )}

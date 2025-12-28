@@ -10,6 +10,7 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
   // Fetch listings from backend
   useEffect(() => {
@@ -18,13 +19,17 @@ export default function HomePage() {
 
   const fetchListings = async () => {
     try {
+      setError('');
       const response = await fetch(`${BACKEND_URL}/api/listings`);
       if (response.ok) {
         const data = await response.json();
         setListings(data.listings || []);
+      } else {
+        setError(`Failed to load listings: Server returned ${response.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch listings:', error);
+      setError(`Failed to connect to backend: ${error.message || 'Network error'}`);
     } finally {
       setLoading(false);
     }
@@ -97,9 +102,31 @@ export default function HomePage() {
       <div className="space-y-4">
         <h2 className="text-3xl font-bold text-white">Active Listings</h2>
         
-        {loading ? (
+        {error ? (
+          <div className="bg-red-500/10 border border-red-500 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <div className="text-red-400 text-2xl">⚠️</div>
+              <div>
+                <h3 className="text-red-400 font-semibold mb-2">Error Loading Listings</h3>
+                <p className="text-red-300 text-sm mb-4">{error}</p>
+                <button
+                  onClick={() => {
+                    setLoading(true);
+                    fetchListings();
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
-            <p className="text-gray-400 text-lg">Loading listings...</p>
+            <div className="animate-pulse">
+              <div className="text-4xl mb-4">⏳</div>
+              <p className="text-gray-400 text-lg">Loading listings...</p>
+            </div>
           </div>
         ) : filteredListings.length === 0 ? (
           <div className="bg-gray-800/50 rounded-lg p-12 text-center border border-gray-700">
