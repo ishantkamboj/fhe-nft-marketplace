@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useWalletClient } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI, LISTING_STATUS } from '@/lib/contract';
 import { formatEther, parseEther } from 'ethers';
-import { initFheInstance } from '@/lib/fhe';
+import { decryptListingData } from '@/lib/fhe';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -143,20 +143,30 @@ export default function ListingDetailPage() {
     setDecryptionError('');
 
     try {
-      console.log('🔑 Attempting to access encrypted data...');
+      console.log('🔑 Starting FHE decryption...');
       console.log('Encrypted private key (32 euint8 values):', encryptedPrivateKey);
       console.log('Encrypted wallet (20 euint8 values):', encryptedSellerWallet);
 
-      // Show that we have access to the encrypted data
-      setDecryptionError(
-        'Encrypted data is accessible! Full FHE decryption requires Zama Gateway integration. ' +
-        'The private key and seller wallet are encrypted with FHE and stored on-chain. ' +
-        'To decrypt: generate EIP-712 signature → request re-encryption → decrypt with fhevmjs.'
+      // Decrypt using Zama's free Gateway on Sepolia
+      const result = await decryptListingData(
+        CONTRACT_ADDRESS,
+        listingId,
+        encryptedPrivateKey,
+        encryptedSellerWallet,
+        walletClient
       );
 
+      if (result.error) {
+        setDecryptionError(result.error);
+      } else {
+        setDecryptedPrivateKey(result.privateKey || '');
+        setDecryptedWallet(result.walletAddress || '');
+        console.log('✅ Decryption successful!');
+      }
+
     } catch (error: any) {
-      console.error('Error accessing encrypted data:', error);
-      setDecryptionError(error.message || 'Failed to access encrypted data');
+      console.error('Error decrypting data:', error);
+      setDecryptionError(error.message || 'Failed to decrypt data. Make sure you are the buyer and have permission.');
     } finally {
       setIsDecrypting(false);
     }

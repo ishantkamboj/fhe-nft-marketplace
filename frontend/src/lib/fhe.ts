@@ -28,16 +28,13 @@ export async function initFheInstance() {
 
 /**
  * Decrypt listing data (private key and seller wallet)
- * This is a simplified implementation - full Zama FHE decryption would require:
- * 1. EIP-712 signature for permission
- * 2. Re-encryption for user's public key
- * 3. Client-side decryption
+ * Uses Zama's free FHE Gateway on Sepolia testnet
  */
 export async function decryptListingData(
   contractAddress: string,
   listingId: bigint,
-  encryptedPrivateKey: any[],
-  encryptedWallet: any[],
+  encryptedPrivateKey: readonly any[],
+  encryptedWallet: readonly any[],
   walletClient: any
 ) {
   try {
@@ -63,18 +60,47 @@ export async function decryptListingData(
     // Get contract instance
     const contract = new Contract(contractAddress, CONTRACT_ABI, signer);
 
-    // Attempt to decrypt - this is a placeholder for the full implementation
-    // In production, you would:
-    // 1. Call contract methods to get reencrypted data
-    // 2. Use instance to decrypt each euint8 value
-    // 3. Combine bytes back into privateKey and wallet address
+    console.log('🔓 Decrypting wallet address (20 bytes)...');
+    const walletBytes: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      // Each encryptedWallet[i] is a euint8 ciphertext handle
+      const ciphertext = encryptedWallet[i];
+      const decrypted = await instance.reencrypt(
+        ciphertext,
+        contractAddress,
+        publicKey,
+        signature,
+        signer
+      );
+      walletBytes.push(decrypted);
+    }
 
-    console.log('⚠️ Note: Full FHE decryption requires Zama Gateway integration');
+    // Convert bytes to address
+    const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('✅ Wallet decrypted:', walletAddress);
+
+    console.log('🔓 Decrypting private key (32 bytes)...');
+    const keyBytes: number[] = [];
+    for (let i = 0; i < 32; i++) {
+      const ciphertext = encryptedPrivateKey[i];
+      const decrypted = await instance.reencrypt(
+        ciphertext,
+        contractAddress,
+        publicKey,
+        signature,
+        signer
+      );
+      keyBytes.push(decrypted);
+    }
+
+    // Convert bytes to private key
+    const privateKey = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log('✅ Private key decrypted (length):', privateKey.length);
 
     return {
-      privateKey: null,
-      walletAddress: null,
-      error: 'FHE decryption requires additional Zama Gateway setup. Please see documentation.',
+      privateKey,
+      walletAddress,
+      error: null,
     };
   } catch (error: any) {
     console.error('Decryption failed:', error);
