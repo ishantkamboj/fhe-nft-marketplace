@@ -528,10 +528,10 @@ app.listen(PORT, () => {
   console.log('   POST /api/listings/:id/decrypt - Decrypt data for buyer');
   console.log('   GET  /api/health - Health check');
   console.log('\n🔐 Encryption:');
-  console.log('   - 1 euint64 (price)');
+  console.log('   - 0 euint64 (price is PUBLIC)');
   console.log('   - 20 euint8 (wallet)');
   console.log('   - 32 euint8 (private key)');
-  console.log('   = 53 FHE values total!');
+  console.log('   = 52 FHE values total!');
   console.log('\n💾 Storage:');
   console.log('   - Public metadata in db.json');
   console.log('   - Frontend can browse listings');

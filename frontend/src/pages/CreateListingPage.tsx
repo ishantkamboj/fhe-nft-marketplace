@@ -271,15 +271,28 @@ export default function CreateListingPage() {
     if (isSuccess && tempListingId && hash && receipt) {
       const linkListing = async () => {
         try {
-          // Read listingCount from contract to get the ID of the listing we just created
-          console.log('🔍 Reading listingCount from contract...');
+          // Parse the ListingCreated event from the receipt to get the actual listing ID
+          console.log('🔍 Parsing ListingCreated event from receipt...');
+          console.log('📄 Receipt:', receipt);
 
-          const provider = new BrowserProvider(window.ethereum);
-          const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-          const listingCount = await contract.listingCount();
-          const contractListingId = Number(listingCount);
+          // The ListingCreated event signature includes the listingId as the first indexed parameter
+          // event ListingCreated(uint256 indexed listingId, string nftProject, uint256 quantity, uint256 collateral)
 
-          console.log('📊 Contract listingCount:', contractListingId);
+          // Find the ListingCreated event in the logs
+          const listingCreatedEvent = receipt.logs.find((log: any) => {
+            // Check if this is from our contract
+            return log.address.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
+          });
+
+          if (!listingCreatedEvent) {
+            console.error('❌ Could not find ListingCreated event in receipt');
+            return;
+          }
+
+          // The listingId is the first indexed topic (topics[1], topics[0] is the event signature)
+          const contractListingId = parseInt(listingCreatedEvent.topics[1], 16);
+
+          console.log('📊 Listing ID from event:', contractListingId);
           console.log(`🔗 Linking backend listing ${tempListingId} to contract listing ${contractListingId}`);
 
           // Link the listing
@@ -296,7 +309,8 @@ export default function CreateListingPage() {
             console.log('✅ Successfully linked listing');
             setTimeout(() => navigate('/'), 2000);
           } else {
-            console.error('Failed to link listing:', await response.text());
+            const errorText = await response.text();
+            console.error('Failed to link listing:', errorText);
           }
         } catch (error) {
           console.error('Error linking listing:', error);
