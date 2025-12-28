@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { parseEther, Contract, BrowserProvider } from 'ethers';
 import { useNavigate } from 'react-router-dom';
-import { decodeEventLog } from 'viem';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -271,47 +270,15 @@ export default function CreateListingPage() {
     if (isSuccess && tempListingId && hash && receipt) {
       const linkListing = async () => {
         try {
-          // Extract listing ID from event logs using proper decoding
-          let contractListingId = 1; // Default fallback
+          // Read listingCount from contract to get the ID of the listing we just created
+          console.log('🔍 Reading listingCount from contract...');
 
-          console.log('🔍 Parsing transaction receipt for listing ID...');
-          console.log('   Total logs in receipt:', receipt.logs?.length || 0);
+          const provider = new BrowserProvider(window.ethereum);
+          const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+          const listingCount = await contract.listingCount();
+          const contractListingId = Number(listingCount);
 
-          if (receipt.logs && receipt.logs.length > 0) {
-            // Decode all logs and find ListingCreated event
-            for (let i = 0; i < receipt.logs.length; i++) {
-              const log = receipt.logs[i];
-              console.log(`   Log ${i}:`, {
-                address: log.address,
-                topics: log.topics?.length || 0,
-                data: log.data?.substring(0, 20) + '...'
-              });
-
-              try {
-                const decoded = decodeEventLog({
-                  abi: CONTRACT_ABI,
-                  data: log.data,
-                  topics: log.topics,
-                });
-
-                console.log(`   ✅ Decoded event: ${decoded.eventName}`);
-
-                // Check if this is the ListingCreated event
-                if (decoded.eventName === 'ListingCreated') {
-                  const listingId = decoded.args.listingId;
-                  console.log('🎯 Found ListingCreated event with ID:', listingId.toString());
-                  contractListingId = Number(listingId);
-                  break;
-                }
-              } catch (e) {
-                console.log(`   ⚠️  Log ${i} - Failed to decode:`, (e as Error).message);
-                // Skip logs that don't match our ABI
-                continue;
-              }
-            }
-          }
-
-          console.log('📌 Final contractListingId:', contractListingId);
+          console.log('📊 Contract listingCount:', contractListingId);
           console.log(`🔗 Linking backend listing ${tempListingId} to contract listing ${contractListingId}`);
 
           // Link the listing
