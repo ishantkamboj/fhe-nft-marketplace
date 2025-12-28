@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract } from 'ethers';
-import { createInstance, SepoliaConfig } from 'fhevmjs/web';
+import { createInstance } from 'fhevmjs/web';
 import { CONTRACT_ABI } from './contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
@@ -41,7 +41,7 @@ export async function decryptListingData(
     // Create FHE instance to generate keypair and EIP712
     console.log('🔑 Creating FHE instance for signature...');
     const fhevmInstance = await createInstance({
-      chainId: SepoliaConfig.chainId,
+      chainId: 8009,
       networkUrl: 'https://devnet.zama.ai',
       gatewayUrl: 'https://gateway.devnet.zama.ai',
     });
