@@ -276,13 +276,15 @@ app.post('/api/listings/:tempId/link', async (req, res) => {
 app.post('/api/listings/:id/decrypt', async (req, res) => {
   try {
     const listingId = parseInt(req.params.id);
-    const { buyerAddress } = req.body;
+    const { buyerAddress, encryptedWallet, encryptedPrivateKey } = req.body;
 
-    if (!buyerAddress) {
-      return res.status(400).json({ error: 'Buyer address required' });
+    if (!buyerAddress || !encryptedWallet || !encryptedPrivateKey) {
+      return res.status(400).json({ error: 'Missing required fields: buyerAddress, encryptedWallet, encryptedPrivateKey' });
     }
 
     console.log(`🔓 Decryption request for listing ${listingId} from ${buyerAddress}`);
+    console.log('   Encrypted wallet handles:', encryptedWallet.length);
+    console.log('   Encrypted key handles:', encryptedPrivateKey.length);
 
     // Get listing from database
     await db.read();
@@ -303,13 +305,12 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     const contract = new ethers.Contract(
       CONTRACT_ADDRESS,
       [
-        'function getListing(uint256) view returns (tuple(uint256 listingId, address seller, bytes32[20] encryptedSellerWallet, address buyer, string nftProject, uint256 quantity, bytes32 encryptedPrice, uint256 collateral, uint256 buyerPayment, bytes32[32] encryptedPrivateKey, bytes32 privateKeyHash, uint256 mintDate, uint256 confirmationDeadline, uint8 status, uint256 createdAt, uint256 soldAt, uint256 completedAt, bool hasCollateral, bool mintDateSet, bool underManualReview, string reviewNotes))',
-        'function getEncryptedData(uint256) view returns (bytes, bytes, bytes)'
+        'function getListing(uint256) view returns (tuple(uint256 listingId, address seller, bytes32[20] encryptedSellerWallet, address buyer, string nftProject, uint256 quantity, bytes32 encryptedPrice, uint256 collateral, uint256 buyerPayment, bytes32[32] encryptedPrivateKey, bytes32 privateKeyHash, uint256 mintDate, uint256 confirmationDeadline, uint8 status, uint256 createdAt, uint256 soldAt, uint256 completedAt, bool hasCollateral, bool mintDateSet, bool underManualReview, string reviewNotes))'
       ],
       provider
     );
 
-    console.log('📡 Checking on-chain listing data...');
+    console.log('📡 Verifying buyer on-chain...');
 
     // Verify caller is the actual buyer
     const onChainListing = await contract.getListing(listingId);
@@ -330,14 +331,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     console.log('✅ Buyer verified:', actualBuyer);
 
-    // Get encrypted data from contract
-    console.log('📥 Fetching encrypted data from contract...');
-    const [priceBytes, walletBytes, keyBytes] = await contract.getEncryptedData(listingId);
-
-    console.log('   Wallet bytes length:', walletBytes.length);
-    console.log('   Key bytes length:', keyBytes.length);
-
-    // Create FHE instance for decryption
+    // Encrypted handles were provided by frontend (which has buyer authorization to call getEncryptedData)
     console.log('🔐 Creating FHEVM instance for decryption...');
     const fhevmInstance = await createInstance({
       ...SepoliaConfig,
@@ -346,24 +340,24 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
 
     console.log('✅ FHEVM instance created');
 
-    // Decrypt wallet address
-    console.log('🔓 Decrypting wallet address...');
-    const decryptedWalletBytes = await fhevmInstance.decrypt(
-      CONTRACT_ADDRESS,
-      walletBytes
-    );
-    const walletAddress = '0x' + Buffer.from(decryptedWalletBytes).toString('hex');
-
+    // Decrypt wallet address (20 bytes from euint8 handles)
+    console.log('🔓 Decrypting wallet address (20 bytes)...');
+    const walletBytes: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const decrypted = await fhevmInstance.decryptUint8(CONTRACT_ADDRESS, encryptedWallet[i]);
+      walletBytes.push(decrypted);
+    }
+    const walletAddress = '0x' + walletBytes.map(b => b.toString(16).padStart(2, '0')).join('');
     console.log('✅ Wallet decrypted:', walletAddress);
 
-    // Decrypt private key
-    console.log('🔓 Decrypting private key...');
-    const decryptedKeyBytes = await fhevmInstance.decrypt(
-      CONTRACT_ADDRESS,
-      keyBytes
-    );
-    const privateKey = '0x' + Buffer.from(decryptedKeyBytes).toString('hex');
-
+    // Decrypt private key (32 bytes from euint8 handles)
+    console.log('🔓 Decrypting private key (32 bytes)...');
+    const keyBytes: number[] = [];
+    for (let i = 0; i < 32; i++) {
+      const decrypted = await fhevmInstance.decryptUint8(CONTRACT_ADDRESS, encryptedPrivateKey[i]);
+      keyBytes.push(decrypted);
+    }
+    const privateKey = '0x' + keyBytes.map(b => b.toString(16).padStart(2, '0')).join('');
     console.log('✅ Private key decrypted (length):', privateKey.length);
 
     res.json({

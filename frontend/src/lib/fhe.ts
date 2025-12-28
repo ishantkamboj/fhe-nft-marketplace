@@ -1,10 +1,12 @@
-import { BrowserProvider } from 'ethers';
+import { BrowserProvider, Contract } from 'ethers';
+import { CONTRACT_ABI } from './contract';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 /**
  * Decrypt listing data via backend API
- * Backend handles FHE decryption using @zama-fhe/relayer-sdk
+ * Frontend fetches encrypted data (proving buyer ownership),
+ * then backend decrypts using @zama-fhe/relayer-sdk
  */
 export async function decryptListingData(
   contractAddress: string,
@@ -24,12 +26,25 @@ export async function decryptListingData(
     console.log('👤 Buyer address:', buyerAddress);
     console.log('📝 Listing ID:', listingId.toString());
 
-    // Call backend decryption API
+    // Get contract instance with signer (to prove buyer ownership)
+    const contract = new Contract(contractAddress, CONTRACT_ABI, signer);
+
+    // Fetch encrypted data from contract (this call is authorized because signer is buyer)
+    console.log('📥 Fetching encrypted data from contract as buyer...');
+    const [walletHandles, keyHandles] = await contract.getEncryptedData(listingId);
+
+    console.log('✅ Got encrypted data from contract');
+    console.log('   Wallet handles:', walletHandles.length);
+    console.log('   Key handles:', keyHandles.length);
+
+    // Send encrypted handles to backend for decryption
     const response = await fetch(`${BACKEND_URL}/api/listings/${listingId}/decrypt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        buyerAddress
+        buyerAddress,
+        encryptedWallet: walletHandles,
+        encryptedPrivateKey: keyHandles
       }),
     });
 
