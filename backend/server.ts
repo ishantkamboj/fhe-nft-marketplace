@@ -225,7 +225,7 @@ app.post('/api/sync-listings', async (req, res) => {
   try {
     console.log('🔄 Syncing listings from contract...');
 
-    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x233089f76F98F2A1644229F6AccDD9478FA3DF53';
+    const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1';
     const RPC_URL = process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
 
     // Connect to contract
@@ -379,7 +379,7 @@ app.post('/api/listings/:id/prepare-decrypt', async (req, res) => {
     console.log(`🔑 Preparing decryption signature for listing ${listingId}`);
 
     // Verify the buyer actually owns this listing on-chain
-    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x233089f76F98F2A1644229F6AccDD9478FA3DF53';
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1';
     const provider = new ethers.JsonRpcProvider(
       process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
     );
@@ -480,7 +480,7 @@ app.post('/api/listings/:id/decrypt', async (req, res) => {
     }
 
     // Create contract instance to verify buyer
-    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0x233089f76F98F2A1644229F6AccDD9478FA3DF53';
+    const CONTRACT_ADDRESS = contractAddress || process.env.CONTRACT_ADDRESS || '0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1';
     const provider = new ethers.JsonRpcProvider(
       process.env.RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
     );
