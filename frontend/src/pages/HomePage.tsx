@@ -261,7 +261,7 @@ export default function HomePage() {
             <div className="text-4xl mb-3">✅</div>
             <div className="font-semibold text-white mb-2">4. Confirm</div>
             <div className="text-gray-400 text-sm">
-              Confirm within 12h to release funds
+              Confirm within 12 hours after mint to release funds
             </div>
           </div>
         </div>

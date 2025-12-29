@@ -10,6 +10,7 @@ import CreateListingPage from './pages/CreateListingPage';
 import ListingDetailPage from './pages/ListingDetailPage';
 import MyListingsPage from './pages/MyListingsPage';
 import MyPurchasesPage from './pages/MyPurchasesPage';
+import FAQPage from './pages/FAQPage';
 
 import '@rainbow-me/rainbowkit/styles.css';
 import './App.css';
@@ -31,6 +32,7 @@ function App() {
                   <Route path="/listing/:id" element={<ListingDetailPage />} />
                   <Route path="/my-listings" element={<MyListingsPage />} />
                   <Route path="/my-purchases" element={<MyPurchasesPage />} />
+                  <Route path="/faq" element={<FAQPage />} />
                 </Routes>
               </main>
             </div>

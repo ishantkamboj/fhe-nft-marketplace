@@ -30,7 +30,11 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-            
+
+            <Link to="/faq" className="text-gray-300 hover:text-white transition">
+              FAQ
+            </Link>
+
             <ConnectButton />
           </div>
         </div>
