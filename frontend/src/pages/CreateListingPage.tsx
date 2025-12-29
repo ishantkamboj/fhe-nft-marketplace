@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
-import { parseEther, Contract, BrowserProvider } from 'ethers';
+import { parseEther } from 'ethers';
 import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
@@ -290,7 +290,7 @@ export default function CreateListingPage() {
           }
 
           // The listingId is the first indexed topic (topics[1], topics[0] is the event signature)
-          const contractListingId = parseInt(listingCreatedEvent.topics[1], 16);
+          const contractListingId = parseInt(listingCreatedEvent.topics[1] || '0', 16);
 
           console.log('📊 Listing ID from event:', contractListingId);
           console.log(`🔗 Linking backend listing ${tempListingId} to contract listing ${contractListingId}`);

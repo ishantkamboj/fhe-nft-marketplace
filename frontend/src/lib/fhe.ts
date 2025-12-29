@@ -12,8 +12,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 export async function decryptListingData(
   contractAddress: string,
   listingId: bigint,
-  encryptedPrivateKey: readonly any[],
-  encryptedWallet: readonly any[],
+  _encryptedPrivateKey: readonly any[],
+  _encryptedWallet: readonly any[],
   walletClient: any
 ) {
   try {

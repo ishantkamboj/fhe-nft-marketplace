@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { LISTING_STATUS } from '@/lib/contract';
 
 interface ListingCardProps {
   listing: any; // Backend listing object with public metadata

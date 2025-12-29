@@ -112,27 +112,17 @@ export default function ListingDetailPage() {
 
   // Destructure listing object (wagmi returns objects, not arrays)
   const {
-    listingId: id,
     seller,
     encryptedSellerWallet,
     buyer,
     nftProject,
     quantity,
-    encryptedPrice,
-    collateral,
-    buyerPayment,
     encryptedPrivateKey,
-    privateKeyHash,
     mintDate,
     confirmationDeadline,
     status,
-    createdAt,
-    soldAt,
-    completedAt,
     hasCollateral,
-    mintDateSet,
-    underManualReview,
-    reviewNotes
+    mintDateSet
   } = listing as any;
 
   const isBuyer = buyer === address;
