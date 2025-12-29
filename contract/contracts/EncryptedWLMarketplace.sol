@@ -391,7 +391,7 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
 
     /**
      * @notice Resolve dispute (owner only, when status is UnderReview or Disputed)
-     * @param favorBuyer If true: refund buyer + return collateral to seller. If false: pay seller like successful mint
+     * @param favorBuyer If true: buyer gets payment + collateral (seller scammed). If false: seller gets payment + collateral (buyer scammed)
      */
     function resolveDispute(uint256 listingId, bool favorBuyer) external onlyOwner nonReentrant {
         Listing storage listing = listings[listingId];
@@ -405,25 +405,20 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
         uint256 sellerPayout = 0;
 
         if (favorBuyer) {
-            // Refund buyer + return collateral to seller
-            buyerRefund = listing.buyerPayment;
-            sellerPayout = listing.collateral;
+            // Seller is at fault (stole NFT, used sniper bot, etc.)
+            // Buyer gets: payment back + seller's collateral as compensation
+            buyerRefund = listing.buyerPayment + listing.collateral;
 
-            // Send refund to buyer
+            // Send full refund + collateral to buyer
             if (buyerRefund > 0) {
                 (bool sentBuyer, ) = listing.buyer.call{value: buyerRefund}("");
                 require(sentBuyer, "Buyer refund failed");
             }
 
-            // Return collateral to seller
-            if (sellerPayout > 0) {
-                (bool sentSeller, ) = listing.seller.call{value: sellerPayout}("");
-                require(sentSeller, "Seller refund failed");
-            }
-
             listing.status = ListingStatus.Cancelled;
         } else {
-            // Pay seller (treat as successful mint)
+            // Buyer is at fault (false claim, trying to scam)
+            // Seller gets: payment (minus platform fee) + collateral back
             uint256 platformFee = (listing.buyerPayment * platformFeePercent) / 100;
             sellerPayout = listing.buyerPayment - platformFee + listing.collateral;
 
