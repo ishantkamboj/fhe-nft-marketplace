@@ -472,7 +472,7 @@ fhe-nft-marketplace/
 ```
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Please follow these steps:
 
@@ -491,7 +491,7 @@ Contributions are welcome! Please follow these steps:
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Zama**: For the groundbreaking FHE technology and SDK
 - **Ethereum**: For the robust blockchain infrastructure
