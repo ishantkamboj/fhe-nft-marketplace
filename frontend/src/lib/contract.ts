@@ -93,6 +93,23 @@ export const CONTRACT_ABI = [
   },
   {
     "type": "function",
+    "name": "updateMintDate",
+    "inputs": [
+      { "name": "listingId", "type": "uint256" },
+      { "name": "newMintDate", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "mintDateUpdateCount",
+    "inputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getEncryptedData",
     "inputs": [{ "name": "listingId", "type": "uint256" }],
     "outputs": [

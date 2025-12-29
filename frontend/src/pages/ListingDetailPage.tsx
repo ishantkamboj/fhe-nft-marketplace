@@ -21,11 +21,21 @@ export default function ListingDetailPage() {
   const [decryptionError, setDecryptionError] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [backendError, setBackendError] = useState<string>('');
+  const [showUpdateMintDate, setShowUpdateMintDate] = useState(false);
+  const [newMintDate, setNewMintDate] = useState('');
 
   const { data: listing, refetch } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: CONTRACT_ABI,
     functionName: 'getListing',
+    args: [listingId],
+  });
+
+  // Get mint date update count
+  const { data: updateCount } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'mintDateUpdateCount',
     args: [listingId],
   });
 
@@ -201,6 +211,25 @@ export default function ListingDetailPage() {
     });
   };
 
+  const handleUpdateMintDate = () => {
+    if (!newMintDate) {
+      alert('Please select a date');
+      return;
+    }
+
+    const timestamp = Math.floor(new Date(newMintDate).getTime() / 1000);
+
+    writeContract({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'updateMintDate',
+      args: [listingId, BigInt(timestamp)],
+    });
+
+    setShowUpdateMintDate(false);
+    setNewMintDate('');
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -299,6 +328,70 @@ export default function ListingDetailPage() {
           </>
         )}
       </div>
+
+      {/* Update Mint Date Section (for sellers) */}
+      {isSeller && (status === 0 || status === 1) && (
+        <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Update Mint Date</h3>
+            <div className="text-sm text-blue-300">
+              {Number(updateCount || 0)}/5 updates used
+            </div>
+          </div>
+
+          {Number(updateCount || 0) >= 5 ? (
+            <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
+              <p className="text-red-300 text-sm">❌ Maximum updates (5) reached</p>
+            </div>
+          ) : !showUpdateMintDate ? (
+            <button
+              onClick={() => setShowUpdateMintDate(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition"
+            >
+              📅 Update Mint Date
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-300 text-sm block mb-2">
+                  New Mint Date:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={newMintDate}
+                  onChange={(e) => setNewMintDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleUpdateMintDate}
+                  disabled={isPending || !newMintDate}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? 'Updating...' : '✅ Confirm New Date'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpdateMintDate(false);
+                    setNewMintDate('');
+                  }}
+                  className="px-6 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ Remaining updates: {5 - Number(updateCount || 0)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Buy Section */}
       {canBuy && backendListing?.price && (
