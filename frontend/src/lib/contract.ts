@@ -93,6 +93,15 @@ export const CONTRACT_ABI = [
   },
   {
     "type": "function",
+    "name": "cancelListing",
+    "inputs": [
+      { "name": "listingId", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "updateMintDate",
     "inputs": [
       { "name": "listingId", "type": "uint256" },

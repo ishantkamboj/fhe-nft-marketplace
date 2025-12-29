@@ -76,6 +76,7 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
     event DisputeRaised(uint256 indexed listingId, string reason);
     event MintDateUpdated(uint256 indexed listingId, uint256 newMintDate, uint256 updateCount);
     event DisputeResolved(uint256 indexed listingId, bool favorBuyer, uint256 buyerRefund, uint256 sellerPayout);
+    event ListingCancelled(uint256 indexed listingId, uint256 collateralReturned);
     
     constructor() Ownable(msg.sender) {}
     
@@ -294,6 +295,27 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
             listing.status = ListingStatus.UnderReview;
             emit MintConfirmed(listingId, false);
         }
+    }
+
+    /**
+     * @notice Cancel listing (only before sold, seller only)
+     */
+    function cancelListing(uint256 listingId) external nonReentrant {
+        Listing storage listing = listings[listingId];
+
+        require(msg.sender == listing.seller, "Only seller");
+        require(listing.status == ListingStatus.Active, "Can only cancel active listings");
+
+        listing.status = ListingStatus.Cancelled;
+
+        // Return collateral to seller
+        uint256 collateralToReturn = listing.collateral;
+        if (collateralToReturn > 0) {
+            (bool sent, ) = listing.seller.call{value: collateralToReturn}("");
+            require(sent, "Collateral return failed");
+        }
+
+        emit ListingCancelled(listingId, collateralToReturn);
     }
 
     /**

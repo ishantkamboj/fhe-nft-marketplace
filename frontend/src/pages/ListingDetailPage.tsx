@@ -230,6 +230,21 @@ export default function ListingDetailPage() {
     setNewMintDate('');
   };
 
+  const handleCancelListing = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel this listing? Your collateral will be returned to you.'
+    );
+
+    if (confirmed) {
+      writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'cancelListing',
+        args: [listingId],
+      });
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -390,6 +405,28 @@ export default function ListingDetailPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Cancel Listing Section (for sellers, ONLY if Active) */}
+      {isSeller && status === 0 && (
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">⚠️ Danger Zone</h3>
+          <p className="text-gray-300 text-sm mb-4">
+            Cancel this listing and get your collateral back. This action cannot be undone.
+          </p>
+          <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4 mb-4">
+            <p className="text-yellow-300 text-sm">
+              ⚠️ You can only cancel before someone buys. Once sold, cancellation is disabled to prevent scams.
+            </p>
+          </div>
+          <button
+            onClick={handleCancelListing}
+            disabled={isPending}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isPending ? 'Cancelling...' : '🗑️ Cancel Listing & Refund Collateral'}
+          </button>
         </div>
       )}
 
