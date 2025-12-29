@@ -35,7 +35,7 @@ export default function FAQPage() {
     },
     {
       question: "How much collateral should I set?",
-      answer: "We recommend setting collateral between 0.001 ETH and 0.01 ETH. It should be enough to deter scams but not so high that it's burdensome. Consider making it 10-20% of your listing price."
+      answer: "Best practice: If you know the NFT mint price, set your collateral to exactly that amount. This fully protects buyers from losing the mint fee if you scam them.\n\nIf mint price is unknown: Set collateral between 0.001 ETH and 0.01 ETH. It should be enough to deter scams but not so high that it's burdensome."
     },
     {
       question: "Can I update the mint date after listing?",
