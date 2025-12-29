@@ -1,0 +1,14 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "contractAddress": "0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1",
+  "deployer": "0x8f74a0cC16585059057b72bf5f18E5112Eb79Bc1",
+  "deploymentTime": "2025-12-27T06:35:50.368Z",
+  "blockNumber": 9923229,
+  "transactionHash": "0x44b76cca17cb31391d2d159f3c0af0e6dafcd1e59c0be55ec62e472f132a6fc5",
+  "fhevmEnabled": true,
+  "fhevmVersion": "0.9.1",
+  "platformFee": "2%",
+  "confirmationWindow": "12 hours",
+  "maxMintDelay": "1 year"
+}
