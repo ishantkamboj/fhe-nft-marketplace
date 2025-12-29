@@ -86,8 +86,7 @@ export const CONTRACT_ABI = [
     "name": "confirmMint",
     "inputs": [
       { "name": "listingId", "type": "uint256" },
-      { "name": "success", "type": "bool" },
-      { "name": "notes", "type": "string" }
+      { "name": "success", "type": "bool" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
