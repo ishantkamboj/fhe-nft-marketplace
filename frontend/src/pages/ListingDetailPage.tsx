@@ -20,7 +20,6 @@ export default function ListingDetailPage() {
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionError, setDecryptionError] = useState<string>('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmationNotes, setConfirmationNotes] = useState('');
   const [backendError, setBackendError] = useState<string>('');
 
   const { data: listing, refetch } = useReadContract({
@@ -198,7 +197,7 @@ export default function ListingDetailPage() {
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: CONTRACT_ABI,
       functionName: 'confirmMint',
-      args: [listingId, success, confirmationNotes || ''],
+      args: [listingId, success],
     });
   };
 
@@ -417,18 +416,9 @@ export default function ListingDetailPage() {
             </>
           ) : (
             <div className="space-y-4">
-              <div>
-                <label className="text-gray-300 text-sm block mb-2">
-                  Notes (optional):
-                </label>
-                <textarea
-                  value={confirmationNotes}
-                  onChange={(e) => setConfirmationNotes(e.target.value)}
-                  placeholder="Any issues or notes about the mint..."
-                  className="w-full px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:border-purple-500 focus:outline-none resize-none"
-                  rows={3}
-                />
-              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Did the NFT mint successfully using the private key?
+              </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <button
