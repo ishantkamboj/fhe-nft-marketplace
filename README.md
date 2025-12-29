@@ -76,8 +76,6 @@ WL Marketplace provides:
 
 ### Platform Features
 -  **52 FHE Encrypted Values**: Wallet (20) + Private Key (32) fully encrypted
--  **Real-time Updates**: Backend syncs with contract every 30 seconds
--  **Responsive UI**: Works on desktop and mobile browsers
 -  **Comprehensive FAQ**: Detailed help documentation
 -  **Search & Filter**: Find specific NFT projects easily
 
