@@ -69,7 +69,7 @@ export default function FAQPage() {
     },
     {
       question: "What happens if I don't confirm within 12 hours?",
-      answer: "If you don't confirm (either 'Mint Successful' or 'Mint Failed') within 12 hours after the mint date, the seller can automatically claim the payment. It's important to confirm promptly to protect your purchase."
+      answer: "If you don't confirm (either 'Mint Successful' or 'Mint Failed') within 12 hours after the mint date, the listing goes under review and the platform admin will investigate to determine the outcome. It's important to confirm promptly to protect your purchase."
     },
     {
       question: "What if the seller scammed me?",
@@ -77,7 +77,7 @@ export default function FAQPage() {
     },
     {
       question: "Can I get a refund?",
-      answer: "Refunds are only possible if:\n- The seller cancels before you buy (automatic refund)\n- You prove the seller scammed you by clicking 'Mint Failed' and the admin rules in your favor\n- Technical issues prevent you from accessing the private key\n\nOnce you've successfully minted the NFT and confirmed, refunds are not possible."
+      answer: "Refunds are only possible after you've purchased a listing if:\n- You prove the seller scammed you by clicking 'Mint Failed' and the admin rules in your favor\n- Technical issues prevent you from accessing the private key\n\nOnce you've successfully minted the NFT and confirmed, refunds are not possible."
     },
 
     // Technical Questions
@@ -109,7 +109,7 @@ export default function FAQPage() {
     // Safety & Security
     {
       question: "How does the collateral system protect me?",
-      answer: "For Buyers: If a seller scams you, the admin can award you the seller's collateral as compensation on top of your refund.\n\nFor Sellers: If a buyer falsely claims they were scammed, you keep both the payment and your collateral, making false claims costly for malicious buyers."
+      answer: "For Buyers: If a seller scams you, the admin can award you the seller's collateral as compensation on top of your refund.\n\nFor Sellers: If a buyer falsely claims they were scammed, you keep both the payment and your collateral."
     },
     {
       question: "What should I do after buying a listing?",
@@ -117,7 +117,7 @@ export default function FAQPage() {
     },
     {
       question: "Can sellers see who bought their listing?",
-      answer: "Yes, sellers can see the buyer's wallet address on-chain since all transactions are public. However, they cannot decrypt the listing's private key after selling - only the buyer can."
+      answer: "Yes, sellers can see the buyer's wallet address on-chain since all transactions are public on the blockchain."
     },
     {
       question: "What if I accidentally send the wrong private key as a seller?",
