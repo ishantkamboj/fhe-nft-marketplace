@@ -24,7 +24,7 @@
 
 ---
 
-## 🎯 Overview
+## Overview
 
 **WL Marketplace** is a decentralized Over-The-Counter (OTC) marketplace that enables secure peer-to-peer trading of NFT whitelist spots. Using Zama's Fully Homomorphic Encryption (FHE) technology, sellers can list their whitelist private keys with complete privacy, while buyers can purchase them securely without risk of scams.
 
@@ -39,52 +39,52 @@ Traditional NFT whitelist trading faces several critical issues:
 ### Our Solution
 
 WL Marketplace provides:
-- ✅ **FHE Encryption**: Private keys remain encrypted on-chain until purchase
-- ✅ **Collateral System**: Sellers lock security deposits to discourage scams
-- ✅ **Escrow Payments**: Automated fund holding and release
-- ✅ **Dispute Resolution**: Admin-mediated conflict resolution
-- ✅ **Buyer Protection**: Collateral compensation for scammed buyers
+-  **FHE Encryption**: Private keys remain encrypted on-chain until purchase
+-  **Collateral System**: Sellers lock security deposits to discourage scams
+-  **Escrow Payments**: Automated fund holding and release
+-  **Dispute Resolution**: Admin-mediated conflict resolution
+-  **Buyer Protection**: Collateral compensation for scammed buyers
 
 ---
 
-## 🌐 Live Demo
+##  Live Demo
 
-**🚀 Frontend Application**: [YOUR_FRONTEND_URL_HERE]
+** Frontend Application**: [YOUR_FRONTEND_URL_HERE]
 
-**📜 Smart Contract (Sepolia)**: [`0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1`](https://sepolia.etherscan.io/address/0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1)
+** Smart Contract (Sepolia)**: [`0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1`](https://sepolia.etherscan.io/address/0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1)
 
-**🔗 Network**: Ethereum Sepolia Testnet
+** Network**: Ethereum Sepolia Testnet
 
 ---
 
-## ✨ Key Features
+##  Key Features
 
 ### For Sellers
-- 📝 **List Whitelist Spots**: Encrypt and list private keys on-chain
-- 💰 **Set Your Price**: Price listings in ETH (stored in Gwei)
-- 🔒 **Collateral Security**: Lock security deposits (recommended: equal to mint price)
-- 📅 **Flexible Mint Dates**: Update mint dates up to 5 times
-- ❌ **Cancel Anytime**: Cancel listings before sale with full collateral refund
-- 💸 **Automated Payments**: Receive 98% of sale price (2% platform fee)
+-  **List Whitelist Spots**: Encrypt and list private keys on-chain
+-  **Set Your Price**: Price listings in ETH (stored in Gwei)
+-  **Collateral Security**: Lock security deposits (recommended: equal to mint price)
+-  **Flexible Mint Dates**: Update mint dates up to 5 times
+-  **Cancel Anytime**: Cancel listings before sale with full collateral refund
+-  **Automated Payments**: Receive 98% of sale price (2% platform fee)
 
 ### For Buyers
-- 🛒 **Instant Purchase**: Buy whitelist spots with immediate access
-- 🔓 **Secure Decryption**: Decrypt private keys using wallet signature
-- ⏰ **12-Hour Confirmation**: Confirm mint success within 12 hours
-- 🛡️ **Scam Protection**: Receive seller's collateral if scammed
-- ⚖️ **Dispute Resolution**: Admin mediation for conflicts
-- 💯 **Full Transparency**: Track listing status on-chain
+-  **Instant Purchase**: Buy whitelist spots with immediate access
+-  **Secure Decryption**: Decrypt private keys using wallet signature
+-  **12-Hour Confirmation**: Confirm mint success within 12 hours
+-  **Scam Protection**: Receive seller's collateral if scammed
+-  **Dispute Resolution**: Admin mediation for conflicts
+-  **Full Transparency**: Track listing status on-chain
 
 ### Platform Features
-- 🔐 **52 FHE Encrypted Values**: Wallet (20) + Private Key (32) fully encrypted
-- 📊 **Real-time Updates**: Backend syncs with contract every 30 seconds
-- 📱 **Responsive UI**: Works on desktop and mobile browsers
-- ❓ **Comprehensive FAQ**: Detailed help documentation
-- 🔍 **Search & Filter**: Find specific NFT projects easily
+-  **52 FHE Encrypted Values**: Wallet (20) + Private Key (32) fully encrypted
+-  **Real-time Updates**: Backend syncs with contract every 30 seconds
+-  **Responsive UI**: Works on desktop and mobile browsers
+-  **Comprehensive FAQ**: Detailed help documentation
+-  **Search & Filter**: Find specific NFT projects easily
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 ### 1️⃣ Listing Creation (Seller)
 ```
@@ -134,61 +134,61 @@ Dispute Path:
 
 ---
 
-## 🏗️ Technical Architecture
+##  Technical Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                   Frontend (React + Vite)                 │
-│  ┌────────────┬────────────┬────────────┬──────────┐    │
-│  │  HomePage  │   Create   │  Listings  │   FAQ    │    │
-│  │            │   Listing  │  Details   │          │    │
-│  └────────────┴────────────┴────────────┴──────────┘    │
+│                   Frontend (React + Vite)                │
+│  ┌────────────┬────────────┬────────────┬──────────┐     │
+│  │  HomePage  │   Create   │  Listings  │   FAQ    │     │
+│  │            │   Listing  │  Details   │          │     │
+│  └────────────┴────────────┴────────────┴──────────┘     │
 │         │              │              │                  │
-│         └──────────────┴──────────────┴──> Wagmi v2     │
+│         └──────────────┴──────────────┴──> Wagmi v2      │
 │                                             RainbowKit   │
 └──────────────────────┬───────────────────────────────────┘
                        │
                        │ HTTP REST API
                        │
 ┌──────────────────────▼───────────────────────────────────┐
-│              Backend API (Node.js + Express)              │
-│  ┌─────────────────────────────────────────────────┐    │
-│  │  • POST /api/encrypt-listing                    │    │
-│  │  • GET  /api/listings                           │    │
-│  │  • POST /api/sync-listings                      │    │
-│  │  • POST /api/listings/:id/prepare-decrypt       │    │
-│  │  • POST /api/listings/:id/decrypt               │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                           │
-│  🔐 Zama FHE SDK (Encryption/Decryption)                │
-│  💾 LowDB (Public metadata cache)                        │
+│              Backend API (Node.js + Express)             │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │  • POST /api/encrypt-listing                    │     │
+│  │  • GET  /api/listings                           │     │
+│  │  • POST /api/sync-listings                      │     │
+│  │  • POST /api/listings/:id/prepare-decrypt       │     │
+│  │  • POST /api/listings/:id/decrypt               │     │
+│  └─────────────────────────────────────────────────┘     │
+│                                                          │
+│  🔐 Zama FHE SDK (Encryption/Decryption)                 │
+│  💾 LowDB (Public metadata cache)                       │
 └──────────────────────┬───────────────────────────────────┘
                        │
                        │ Web3 RPC
                        │
 ┌──────────────────────▼───────────────────────────────────┐
 │         Smart Contract (Solidity 0.8.24 + TFHE)          │
-│                                                           │
+│                                                          │
 │  struct Listing {                                        │
 │    uint256 listingId;                                    │
 │    address seller;                                       │
-│    euint8[20] encryptedSellerWallet;  // 20 FHE values  │
-│    euint8[32] encryptedPrivateKey;    // 32 FHE values  │
+│    euint8[20] encryptedSellerWallet;  // 20 FHE values   │
+│    euint8[32] encryptedPrivateKey;    // 32 FHE values   │
 │    address buyer;                                        │
 │    uint256 price;              // Gwei (public)          │
 │    uint256 collateral;         // Wei (public)           │
 │    uint256 mintDate;                                     │
 │    ListingStatus status;                                 │
-│    ...                                                    │
-│  }                                                        │
-│                                                           │
-│  📍 Deployed: 0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1│
+│    ...                                                   │
+│  }                                                       │
+│                                                          │
+│   Deployed: 0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1 │
 └───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📜 Smart Contract
+##  Smart Contract
 
 ### Deployment Details
 
@@ -293,9 +293,9 @@ const encrypted = await input.encrypt();
 
 - **Payment Holding**: Buyer's payment held in contract
 - **Release Conditions**:
-  - ✅ Buyer confirms "Mint Successful" → Seller gets 98%, collateral returned
-  - ❌ Buyer confirms "Mint Failed" → Goes to admin review
-  - ⏰ 12 hours pass without confirmation → Admin review
+  -  Buyer confirms "Mint Successful" → Seller gets 98%, collateral returned
+  -  Buyer confirms "Mint Failed" → Goes to admin review
+  -  12 hours pass without confirmation → Admin review
 
 ### 4. Dispute Resolution
 
@@ -314,7 +314,7 @@ const encrypted = await input.encrypt();
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -370,7 +370,7 @@ npm run dev
 
 Frontend will run on `http://localhost:5173`
 
-#### 4. Smart Contract (Already Deployed)
+#### 4. Smart Contract
 
 The contract is already deployed on Sepolia. If you need to deploy your own:
 
@@ -473,60 +473,6 @@ fhe-nft-marketplace/
 ├── .gitignore
 └── LICENSE
 ```
-
----
-
-## 🧪 Testing
-
-### Backend Testing
-
-```bash
-cd backend
-
-# Test encryption endpoint
-curl -X POST http://localhost:3001/api/encrypt-listing \
-  -H "Content-Type: application/json" \
-  -d '{
-    "price": "0.01",
-    "sellerWallet": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
-    "privateKey": "0x47e179ec197488593b187f80a00eb0da91f1b9d0b53887a9b7c40fbaf4fb92f0",
-    "nftProject": "Test Project",
-    "quantity": 1,
-    "collateral": "0.005",
-    "mintDate": 0,
-    "contractAddress": "0xC90de47a46a1aF7eCa0d1eF12272d448382f46c1",
-    "userAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0"
-  }'
-
-# Get all listings
-curl http://localhost:3001/api/listings
-
-# Sync from contract
-curl -X POST http://localhost:3001/api/sync-listings
-```
-
-### Contract Testing (Hardhat)
-
-```bash
-cd contract
-npx hardhat test
-```
-
----
-
-## 🔮 Future Enhancements
-
-- [ ] Multi-chain deployment (Base, Polygon, Arbitrum)
-- [ ] Automated market maker (AMM) for instant pricing
-- [ ] Reputation system for sellers
-- [ ] Bulk listing creation tools
-- [ ] Mobile app (React Native)
-- [ ] Price discovery charts
-- [ ] Notification system (email/push)
-- [ ] Advanced filtering and sorting
-- [ ] Whitelist verification system
-- [ ] Integration with popular NFT projects
-
 ---
 
 ## 🤝 Contributing
@@ -560,14 +506,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Ethereum**: For the robust blockchain infrastructure
 - **OpenZeppelin**: For secure smart contract libraries
 - **RainbowKit & Wagmi**: For excellent Web3 developer tools
-
----
-
-## 📞 Support & Contact
-
-- **Issues**: [GitHub Issues](https://github.com/ishantkamboj/fhe-nft-marketplace/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ishantkamboj/fhe-nft-marketplace/discussions)
-- **Documentation**: Visit `/faq` on the live app
 
 ---
 
