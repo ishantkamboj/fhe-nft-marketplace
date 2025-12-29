@@ -69,7 +69,7 @@ WL Marketplace provides:
 ### For Buyers
 -  **Instant Purchase**: Buy whitelist spots with immediate access
 -  **Secure Decryption**: Decrypt private keys using wallet signature
--  **12-Hour Confirmation**: Confirm mint success within 12 hours
+-  **12-Hour Confirmation**: Confirm within 12 hours after mint to release funds
 -  **Scam Protection**: Receive seller's collateral if scammed
 -  **Dispute Resolution**: Admin mediation for conflicts
 -  **Full Transparency**: Track listing status on-chain
