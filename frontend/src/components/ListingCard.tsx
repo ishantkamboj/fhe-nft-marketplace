@@ -12,16 +12,6 @@ export default function ListingCard({ listing }: ListingCardProps) {
     return date.toLocaleDateString();
   };
 
-  // Convert Gwei to ETH
-  const formatPrice = (priceInGwei: number) => {
-    return (priceInGwei / 1e9).toFixed(4);
-  };
-
-  // Convert Wei to ETH
-  const formatEth = (wei: number) => {
-    return (wei / 1e18).toFixed(4);
-  };
-
   // Get status info
   const getStatusInfo = () => {
     const status = listing.status ?? -1;
@@ -67,7 +57,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <div className="flex items-center justify-between">
             <span className="text-primary text-sm">Price:</span>
             <span className="text-white font-bold text-xl">
-              {formatPrice(listing.price || listing.priceInGwei || 0)} ETH
+              {(listing.price || 0).toFixed(4)} ETH
             </span>
           </div>
         </div>
@@ -78,7 +68,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
             <div className="flex items-center justify-between">
               <span className="text-green-400 text-sm">✅ Collateral Locked</span>
               <span className="text-green-400 font-semibold">
-                {formatEth(listing.collateral)} ETH
+                {(listing.collateral || 0).toFixed(4)} ETH
               </span>
             </div>
           </div>

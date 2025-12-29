@@ -130,16 +130,6 @@ export default function ListingDetailPage() {
   const isSeller = seller === address;
   const canBuy = status === 0 && !isSeller && isConnected;
 
-  // Convert Gwei to ETH
-  const formatPrice = (priceInGwei: number) => {
-    return (priceInGwei / 1e9).toFixed(4);
-  };
-
-  // Convert Wei to ETH
-  const formatEth = (wei: number) => {
-    return (wei / 1e18).toFixed(4);
-  };
-
   const formatMintDate = (timestamp: bigint | number) => {
     if (!timestamp || timestamp === 0n || timestamp === 0) return 'TBD';
     const date = new Date(Number(timestamp) * 1000);
@@ -246,11 +236,11 @@ export default function ListingDetailPage() {
             <div className="text-white font-semibold text-xl">{quantity.toString()} WL</div>
           </div>
 
-          {hasCollateral && (
+          {hasCollateral && backendListing?.collateral && (
             <div>
               <div className="text-gray-400 mb-1">Collateral Locked</div>
               <div className="text-green-400 font-semibold text-xl">
-                ✅ {formatEth(Number(collateral))} ETH
+                ✅ {(backendListing.collateral || 0).toFixed(4)} ETH
               </div>
             </div>
           )}
@@ -297,7 +287,7 @@ export default function ListingDetailPage() {
         {backendListing?.price ? (
           <>
             <div className="text-4xl font-bold text-primary mb-2">
-              {formatPrice(backendListing.price || backendListing.priceInGwei || 0)} ETH
+              {(backendListing.price || 0).toFixed(4)} ETH
             </div>
             <p className="text-gray-400 text-sm">Public price</p>
           </>
@@ -319,7 +309,7 @@ export default function ListingDetailPage() {
             <div className="bg-primary/10 border border-primary rounded-lg p-4">
               <div className="text-sm text-primary mb-1">You will pay:</div>
               <div className="text-3xl font-bold text-white">
-                {formatPrice(backendListing.price || backendListing.priceInGwei || 0)} ETH
+                {(backendListing.price || 0).toFixed(4)} ETH
               </div>
             </div>
             <button
@@ -327,7 +317,7 @@ export default function ListingDetailPage() {
               disabled={isPending || isConfirming}
               className="w-full bg-primary hover:bg-primary/80 text-white py-4 rounded-lg font-semibold text-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? 'Buying...' : isConfirming ? 'Confirming...' : `Buy for ${formatPrice(backendListing.price || backendListing.priceInGwei || 0)} ETH`}
+              {isPending ? 'Buying...' : isConfirming ? 'Confirming...' : `Buy for ${(backendListing.price || 0).toFixed(4)} ETH`}
             </button>
           </div>
         </div>

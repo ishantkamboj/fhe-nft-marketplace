@@ -249,6 +249,17 @@ app.post('/api/sync-listings', async (req, res) => {
       Array.from({ length: count }, (_, i) => i + 1).map(async (id) => {
         try {
           const listing = await contract.getListing(id);
+
+          // Convert contract values to ETH for display
+          const priceInGwei = Number(listing.price);
+          const priceInEth = priceInGwei / 1e9; // Gwei to ETH
+
+          const collateralInWei = Number(listing.collateral);
+          const collateralInEth = collateralInWei / 1e18; // Wei to ETH
+
+          const buyerPaymentInWei = Number(listing.buyerPayment);
+          const buyerPaymentInEth = buyerPaymentInWei / 1e18; // Wei to ETH
+
           return {
             contractListingId: id,
             listingId: Number(listing.listingId),
@@ -256,10 +267,12 @@ app.post('/api/sync-listings', async (req, res) => {
             buyer: listing.buyer,
             nftProject: listing.nftProject,
             quantity: Number(listing.quantity),
-            price: Number(listing.price),
-            priceInGwei: Number(listing.price),
-            collateral: Number(listing.collateral),
-            buyerPayment: Number(listing.buyerPayment),
+            price: priceInEth,  // ETH for display
+            priceInGwei: priceInGwei,  // Original Gwei value
+            collateral: collateralInEth,  // ETH for display
+            collateralInWei: collateralInWei,  // Original Wei value
+            buyerPayment: buyerPaymentInEth,  // ETH for display
+            buyerPaymentInWei: buyerPaymentInWei,  // Original Wei value
             mintDate: Number(listing.mintDate),
             status: Number(listing.status),
             createdAt: Number(listing.createdAt),
