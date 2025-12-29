@@ -5,7 +5,6 @@
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue)](https://soliditylang.org/)
 [![Zama](https://img.shields.io/badge/Zama-FHE-purple)](https://www.zama.ai/)
 [![Network](https://img.shields.io/badge/Network-Sepolia-yellow)](https://sepolia.etherscan.io/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## 📖 Table of Contents
 
@@ -491,12 +490,6 @@ Contributions are welcome! Please follow these steps:
 - Add comments for complex logic
 - Update README if adding new features
 - Test thoroughly before submitting PR
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
