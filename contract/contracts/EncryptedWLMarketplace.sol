@@ -58,8 +58,10 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
     mapping(uint256 => Listing) public listings;
     mapping(address => uint256[]) public sellerListings;
     mapping(address => uint256[]) public buyerPurchases;
-    
+    mapping(uint256 => uint256) public mintDateUpdateCount;
+
     // Constants
+    uint256 public constant MAX_MINT_DATE_UPDATES = 5;
     uint256 public constant MIN_CONFIRMATION_TIME = 12 hours;
     uint256 public constant MAX_CONFIRMATION_TIME = 30 days;
     uint256 public constant MAX_MINT_DELAY = 365 days;
@@ -72,6 +74,8 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
     event MintConfirmed(uint256 indexed listingId, bool success);
     event ListingCompleted(uint256 indexed listingId, uint256 sellerPayout);
     event DisputeRaised(uint256 indexed listingId, string reason);
+    event MintDateUpdated(uint256 indexed listingId, uint256 newMintDate, uint256 updateCount);
+    event DisputeResolved(uint256 indexed listingId, bool favorBuyer, uint256 buyerRefund, uint256 sellerPayout);
     
     constructor() Ownable(msg.sender) {}
     
@@ -297,7 +301,7 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
      */
     function raiseDispute(uint256 listingId, string calldata reason) external {
         Listing storage listing = listings[listingId];
-        
+
         require(msg.sender == listing.buyer || msg.sender == listing.seller, "Not authorized");
         require(listing.status == ListingStatus.Sold, "Not sold");
 
@@ -306,6 +310,30 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
         listing.reviewNotes = reason;
 
         emit DisputeRaised(listingId, reason);
+    }
+
+    /**
+     * @notice Update mint date (max 5 times)
+     */
+    function updateMintDate(uint256 listingId, uint256 newMintDate) external nonReentrant {
+        Listing storage listing = listings[listingId];
+
+        require(msg.sender == listing.seller, "Only seller");
+        require(listing.status == ListingStatus.Active || listing.status == ListingStatus.Sold, "Invalid status");
+        require(mintDateUpdateCount[listingId] < MAX_MINT_DATE_UPDATES, "Max updates reached");
+        require(newMintDate > block.timestamp, "Mint date in past");
+        require(newMintDate <= block.timestamp + MAX_MINT_DELAY, "Mint date too far");
+
+        listing.mintDate = newMintDate;
+        listing.mintDateSet = true;
+        mintDateUpdateCount[listingId]++;
+
+        // Update confirmation deadline if listing is sold
+        if (listing.status == ListingStatus.Sold && newMintDate > 0) {
+            listing.confirmationDeadline = newMintDate + MIN_CONFIRMATION_TIME;
+        }
+
+        emit MintDateUpdated(listingId, newMintDate, mintDateUpdateCount[listingId]);
     }
 
     /**
@@ -360,7 +388,55 @@ contract EncryptedWLMarketplace is ZamaEthereumConfig, Ownable, ReentrancyGuard 
     }
 
     // ADMIN
-    
+
+    /**
+     * @notice Resolve dispute (owner only, when status is UnderReview or Disputed)
+     * @param favorBuyer If true: refund buyer + return collateral to seller. If false: pay seller like successful mint
+     */
+    function resolveDispute(uint256 listingId, bool favorBuyer) external onlyOwner nonReentrant {
+        Listing storage listing = listings[listingId];
+
+        require(
+            listing.status == ListingStatus.UnderReview || listing.status == ListingStatus.Disputed,
+            "Not under review"
+        );
+
+        uint256 buyerRefund = 0;
+        uint256 sellerPayout = 0;
+
+        if (favorBuyer) {
+            // Refund buyer + return collateral to seller
+            buyerRefund = listing.buyerPayment;
+            sellerPayout = listing.collateral;
+
+            // Send refund to buyer
+            if (buyerRefund > 0) {
+                (bool sentBuyer, ) = listing.buyer.call{value: buyerRefund}("");
+                require(sentBuyer, "Buyer refund failed");
+            }
+
+            // Return collateral to seller
+            if (sellerPayout > 0) {
+                (bool sentSeller, ) = listing.seller.call{value: sellerPayout}("");
+                require(sentSeller, "Seller refund failed");
+            }
+
+            listing.status = ListingStatus.Cancelled;
+        } else {
+            // Pay seller (treat as successful mint)
+            uint256 platformFee = (listing.buyerPayment * platformFeePercent) / 100;
+            sellerPayout = listing.buyerPayment - platformFee + listing.collateral;
+
+            (bool sent, ) = listing.seller.call{value: sellerPayout}("");
+            require(sent, "Seller payment failed");
+
+            listing.status = ListingStatus.Completed;
+            listing.completedAt = block.timestamp;
+        }
+
+        emit DisputeResolved(listingId, favorBuyer, buyerRefund, sellerPayout);
+    }
+
     function setPlatformFee(uint256 newFeePercent) external onlyOwner {
         require(newFeePercent <= 10, "Max 10%");
         platformFeePercent = newFeePercent;

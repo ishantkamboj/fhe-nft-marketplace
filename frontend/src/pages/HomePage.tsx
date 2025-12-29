@@ -158,7 +158,7 @@ export default function HomePage() {
           <div className="text-gray-400 mt-2">Active Listings</div>
         </div>
         <div className="bg-gray-800/50 rounded-lg p-6 text-center border border-gray-700">
-          <div className="text-3xl font-bold text-green-400">2.5%</div>
+          <div className="text-3xl font-bold text-green-400">2%</div>
           <div className="text-gray-400 mt-2">Platform Fee</div>
         </div>
         <div className="bg-gray-800/50 rounded-lg p-6 text-center border border-gray-700">
